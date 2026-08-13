@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Book, BibleVersion, SearchHit } from '../types';
 import { searchBible } from '../services/bibleService';
 import { THEME_PALETTES } from '../themeDefinitions';
@@ -36,6 +36,42 @@ interface CommandItem {
   action: () => void;
 }
 
+const STUDY_CONCEPTS = [
+  { slug: 'anaquitas', name: 'Anaquitas (Anaceos)', desc: 'Gigantes históricos de Hebrón y su tipología' },
+  { slug: 'cordero-pascual', name: 'Cordero Pascual', desc: 'Sacrificio sustitutivo central y tipología de Cristo' },
+  { slug: 'arca-del-pacto', name: 'Arca del Pacto', desc: 'Trono de la presencia divina y propiciatorio' },
+  { slug: 'melquisedec', name: 'Melquisedec', desc: 'Rey de Salem y sacerdote eterno del Altísimo' },
+  { slug: 'logos-palabra', name: 'El Verbo (Logos)', desc: 'La Palabra divina encarnada en Juan 1:1' },
+  { slug: 'serpiente-de-bronce', name: 'Serpiente de Bronce', desc: 'Símbolo de juicio levantado en el desierto' },
+];
+
+function parseScriptureRef(
+  raw: string,
+  books: Book[]
+): { book: Book; chapter: number; verse?: number } | null {
+  const clean = raw.trim().toLowerCase();
+  if (!clean) return null;
+
+  const match = clean.match(/^([a-záéíóúñ\s]+?)\s*(\d+)(?:[:\s\-](\d+))?$/i);
+  if (!match) return null;
+
+  const bookQuery = match[1].trim();
+  const chapter = parseInt(match[2], 10);
+  const verse = match[3] ? parseInt(match[3], 10) : undefined;
+
+  const found = books.find((b) => {
+    const bName = b.name_es.toLowerCase();
+    const bCode = b.code.toLowerCase();
+    return bName === bookQuery || bName.startsWith(bookQuery) || bCode === bookQuery;
+  });
+
+  if (found && chapter >= 1 && chapter <= found.total_chapters) {
+    return { book: found, chapter, verse };
+  }
+
+  return null;
+}
+
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
@@ -66,7 +102,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   // Handle Search Query with Debounce
   useEffect(() => {
-    if (!query.trim()) {
+    if (!isOpen || !query.trim()) {
       setSearchResults([]);
       return;
     }
@@ -81,180 +117,165 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }, 180);
 
     return () => clearTimeout(timer);
-  }, [query, currentVersion]);
+  }, [query, currentVersion, isOpen]);
 
-  // Parse Direct Scripture Reference (e.g. "Juan 3:16", "Jn 3 16", "Genesis 1", "Josué 15:1")
-  const parseScriptureRef = (raw: string): { book: Book; chapter: number; verse?: number } | null => {
-    const clean = raw.trim().toLowerCase();
-    if (!clean) return null;
+  const items = useMemo(() => {
+    const next: CommandItem[] = [];
+    const parsedRef = parseScriptureRef(query, books);
 
-    // Pattern: [book name / abbreviation] [chapter](:|-|\s)?[verse]?
-    const match = clean.match(/^([a-záéíóúñ\s]+?)\s*(\d+)(?:[:\s\-](\d+))?$/i);
-    if (!match) return null;
-
-    const bookQuery = match[1].trim();
-    const chapter = parseInt(match[2], 10);
-    const verse = match[3] ? parseInt(match[3], 10) : undefined;
-
-    // Find best matching book
-    const found = books.find((b) => {
-      const bName = b.name_es.toLowerCase();
-      const bCode = b.code.toLowerCase();
-      return bName === bookQuery || bName.startsWith(bookQuery) || bCode === bookQuery;
-    });
-
-    if (found && chapter >= 1 && chapter <= found.total_chapters) {
-      return { book: found, chapter, verse };
+    if (parsedRef) {
+      next.push({
+        id: `scripture-${parsedRef.book.id}-${parsedRef.chapter}`,
+        category: 'Escritura',
+        title: `${parsedRef.book.name_es} ${parsedRef.chapter}${parsedRef.verse ? `:${parsedRef.verse}` : ''}`,
+        subtitle: `Saltar directamente al pasaje (${parsedRef.book.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento'})`,
+        icon: BookOpen,
+        action: () => {
+          onSelectPassage(parsedRef.book, parsedRef.chapter, parsedRef.verse);
+          onClose();
+        },
+      });
     }
 
-    return null;
-  };
+    if (searchResults.length > 0) {
+      searchResults.forEach((hit, idx) => {
+        next.push({
+          id: `search-${idx}`,
+          category: 'Palabra',
+          title: `${hit.book_name} ${hit.chapter}:${hit.verse}`,
+          subtitle: hit.raw_text,
+          icon: Search,
+          action: () => {
+            const b = books.find((x) => x.id === hit.book_id);
+            if (b) {
+              onSelectPassage(b, hit.chapter, hit.verse);
+            }
+            onClose();
+          },
+        });
+      });
+    }
 
-  // Build Filtered Command Items
-  const items: CommandItem[] = [];
-
-  const parsedRef = parseScriptureRef(query);
-  if (parsedRef) {
-    items.push({
-      id: `scripture-${parsedRef.book.id}-${parsedRef.chapter}`,
-      category: 'Escritura',
-      title: `${parsedRef.book.name_es} ${parsedRef.chapter}${parsedRef.verse ? `:${parsedRef.verse}` : ''}`,
-      subtitle: `Saltar directamente al pasaje (${parsedRef.book.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento'})`,
-      icon: BookOpen,
-      action: () => {
-        onSelectPassage(parsedRef.book, parsedRef.chapter, parsedRef.verse);
-        onClose();
-      },
-    });
-  }
-
-  // FTS5 Search Hits
-  if (searchResults.length > 0) {
-    searchResults.forEach((hit, idx) => {
-      items.push({
-        id: `search-${idx}`,
-        category: 'Palabra',
-        title: `${hit.book_name} ${hit.chapter}:${hit.verse}`,
-        subtitle: hit.raw_text,
-        icon: Search,
+    STUDY_CONCEPTS.filter(
+      (c) =>
+        !query ||
+        c.name.toLowerCase().includes(query.toLowerCase()) ||
+        c.desc.toLowerCase().includes(query.toLowerCase())
+    ).forEach((c) => {
+      next.push({
+        id: `concept-${c.slug}`,
+        category: 'Concepto',
+        title: c.name,
+        subtitle: c.desc,
+        icon: Sparkles,
         action: () => {
-          const b = books.find((x) => x.id === hit.book_id);
-          if (b) {
-            onSelectPassage(b, hit.chapter, hit.verse);
-          }
+          onSelectConcept(c.slug);
           onClose();
         },
       });
     });
-  }
 
-  // Study Concepts Matching
-  const concepts = [
-    { slug: 'anaquitas', name: 'Anaquitas (Anaceos)', desc: 'Gigantes históricos de Hebrón y su tipología' },
-    { slug: 'cordero-pascual', name: 'Cordero Pascual', desc: 'Sacrificio sustitutivo central y tipología de Cristo' },
-    { slug: 'arca-del-pacto', name: 'Arca del Pacto', desc: 'Trono de la presencia divina y propiciatorio' },
-    { slug: 'melquisedec', name: 'Melquisedec', desc: 'Rey de Salem y sacerdote eterno del Altísimo' },
-    { slug: 'logos-palabra', name: 'El Verbo (Logos)', desc: 'La Palabra divina encarnada en Juan 1:1' },
-    { slug: 'serpiente-de-bronce', name: 'Serpiente de Bronce', desc: 'Símbolo de juicio levantado en el desierto' },
-  ];
-
-  const matchedConcepts = concepts.filter(
-    (c) => !query || c.name.toLowerCase().includes(query.toLowerCase()) || c.desc.toLowerCase().includes(query.toLowerCase())
-  );
-
-  matchedConcepts.forEach((c) => {
-    items.push({
-      id: `concept-${c.slug}`,
-      category: 'Concepto',
-      title: c.name,
-      subtitle: c.desc,
-      icon: Sparkles,
-      action: () => {
-        onSelectConcept(c.slug);
-        onClose();
-      },
-    });
-  });
-
-  // App Commands
-  const appCommands: CommandItem[] = [
-    {
-      id: 'cmd-parallel',
-      category: 'Comandos',
-      title: 'Alternar Vista Paralela',
-      subtitle: 'Comparar dos traducciones lado a lado (Atajo: P)',
-      icon: Columns2,
-      action: () => {
-        onToggleParallel();
-        onClose();
-      },
-    },
-    {
-      id: 'cmd-catalog',
-      category: 'Comandos',
-      title: 'Abrir Catálogo de Estudio',
-      subtitle: 'Explorar todos los conceptos históricos y teológicos',
-      icon: Sparkles,
-      action: () => {
-        onOpenStudyCatalog();
-        onClose();
-      },
-    },
-    {
-      id: 'cmd-settings',
-      category: 'Comandos',
-      title: 'Abrir Configuración',
-      subtitle: 'Ajustar temas, fuentes, versiones y rendimiento',
-      icon: Settings,
-      action: () => {
-        onOpenSettings();
-        onClose();
-      },
-    },
-  ];
-
-  THEME_PALETTES.forEach((t) => {
-    if (!query || t.name.toLowerCase().includes(query.toLowerCase()) || 'tema'.includes(query.toLowerCase())) {
-      appCommands.push({
-        id: `theme-${t.id}`,
+    const appCommands: CommandItem[] = [
+      {
+        id: 'cmd-parallel',
         category: 'Comandos',
-        title: `Cambiar Tema: ${t.name}`,
-        subtitle: t.description,
-        icon: Palette,
+        title: 'Alternar Vista Paralela',
+        subtitle: 'Comparar dos traducciones lado a lado (Atajo: P)',
+        icon: Columns2,
         action: () => {
-          onSelectTheme(t.id);
+          onToggleParallel();
           onClose();
         },
-      });
+      },
+      {
+        id: 'cmd-catalog',
+        category: 'Comandos',
+        title: 'Abrir Catálogo de Estudio',
+        subtitle: 'Explorar todos los conceptos históricos y teológicos',
+        icon: Sparkles,
+        action: () => {
+          onOpenStudyCatalog();
+          onClose();
+        },
+      },
+      {
+        id: 'cmd-settings',
+        category: 'Comandos',
+        title: 'Abrir Configuración',
+        subtitle: 'Ajustar temas, fuentes, versiones y rendimiento',
+        icon: Settings,
+        action: () => {
+          onOpenSettings();
+          onClose();
+        },
+      },
+    ];
+
+    THEME_PALETTES.forEach((t) => {
+      if (!query || t.name.toLowerCase().includes(query.toLowerCase()) || 'tema'.includes(query.toLowerCase())) {
+        appCommands.push({
+          id: `theme-${t.id}`,
+          category: 'Comandos',
+          title: `Cambiar Tema: ${t.name}`,
+          subtitle: t.description,
+          icon: Palette,
+          action: () => {
+            onSelectTheme(t.id);
+            onClose();
+          },
+        });
+      }
+    });
+
+    if (
+      !query ||
+      'comando'.includes(query.toLowerCase()) ||
+      'vista'.includes(query.toLowerCase()) ||
+      'tema'.includes(query.toLowerCase()) ||
+      'configuracion'.includes(query.toLowerCase())
+    ) {
+      next.push(...appCommands);
     }
-  });
 
-  if (!query || 'comando'.includes(query.toLowerCase()) || 'vista'.includes(query.toLowerCase()) || 'tema'.includes(query.toLowerCase()) || 'configuracion'.includes(query.toLowerCase())) {
-    items.push(...appCommands);
-  }
+    return next;
+  }, [
+    query,
+    searchResults,
+    books,
+    onSelectPassage,
+    onSelectConcept,
+    onToggleParallel,
+    onSelectTheme,
+    onOpenSettings,
+    onOpenStudyCatalog,
+    onClose,
+  ]);
 
-  // Keyboard navigation
+  const itemsRef = useRef(items);
+  const selectedIndexRef = useRef(selectedIndex);
+  itemsRef.current = items;
+  selectedIndexRef.current = selectedIndex;
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+    if (!isOpen) return;
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const list = itemsRef.current;
       if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % Math.max(1, items.length));
+        setSelectedIndex((prev) => (prev + 1) % Math.max(1, list.length));
       } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + items.length) % Math.max(1, items.length));
+        setSelectedIndex((prev) => (prev - 1 + list.length) % Math.max(1, list.length));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (items[selectedIndex]) {
-          items[selectedIndex].action();
-        }
+        list[selectedIndexRef.current]?.action();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, items, selectedIndex]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

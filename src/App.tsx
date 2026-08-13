@@ -155,9 +155,15 @@ export function App() {
     localStorage.setItem('verbum_chapter', currentChapter.toString());
     localStorage.setItem('verbum_version', currentVersion);
 
+    let cancelled = false;
     fetchChapter(currentVersion, currentBook.id, currentChapter)
-      .then((data) => setVerses(data))
+      .then((data) => {
+        if (!cancelled) setVerses(data);
+      })
       .catch((err) => console.error('Failed to load primary chapter:', err));
+    return () => {
+      cancelled = true;
+    };
   }, [currentBook, currentChapter, currentVersion]);
 
   // Load Parallel Secondary Verses when Parallel Mode is Active
@@ -167,10 +173,81 @@ export function App() {
       return;
     }
 
+    let cancelled = false;
     fetchChapter(secondaryVersion, currentBook.id, currentChapter)
-      .then((data) => setParallelVerses(data))
+      .then((data) => {
+        if (!cancelled) setParallelVerses(data);
+      })
       .catch((err) => console.error('Failed to load parallel chapter:', err));
+    return () => {
+      cancelled = true;
+    };
   }, [currentBook, currentChapter, secondaryVersion, parallelMode]);
+
+  // Warm adjacent chapters so next/prev navigation is instant
+  useEffect(() => {
+    if (!currentBook) return;
+    const neighbors = [currentChapter - 1, currentChapter + 1].filter(
+      (ch) => ch >= 1 && ch <= currentBook.total_chapters
+    );
+    for (const ch of neighbors) {
+      void fetchChapter(currentVersion, currentBook.id, ch);
+      if (parallelMode) {
+        void fetchChapter(secondaryVersion, currentBook.id, ch);
+      }
+    }
+  }, [currentBook, currentChapter, currentVersion, parallelMode, secondaryVersion]);
+
+  const handleNavigateChapter = useCallback(
+    (delta: number) => {
+      if (!currentBook) return;
+      const target = currentChapter + delta;
+      if (target >= 1 && target <= currentBook.total_chapters) {
+        setCurrentChapter(target);
+        setSelectedVerse(1);
+        setTargetVerseToScroll(1);
+      }
+    },
+    [currentBook, currentChapter]
+  );
+
+  const handleSelectPassage = useCallback((book: Book, chapter: number, verse?: number) => {
+    setCurrentBook(book);
+    setCurrentChapter(chapter);
+    setSelectedVerse(verse || 1);
+    setTargetVerseToScroll(verse || 1);
+    setIsBookPickerOpen(false);
+    setIsCommandPaletteOpen(false);
+    setActiveView('reader');
+  }, []);
+
+  const handleToggleBookmark = useCallback((verseNum: number) => {
+    setBookmarks((prev) =>
+      prev.includes(verseNum) ? prev.filter((v) => v !== verseNum) : [...prev, verseNum]
+    );
+  }, []);
+
+  const handleSelectConcept = useCallback((slug: string) => {
+    setActiveConceptSlug(slug);
+  }, []);
+
+  const handleCompareVerse = useCallback((vNum: number) => {
+    setCompareVerseNum(vNum);
+  }, []);
+
+  const handleSearchWord = useCallback(() => {
+    setIsCommandPaletteOpen(true);
+  }, []);
+
+  const handleGoHome = useCallback(() => {
+    setActiveView('reader');
+    setSelectedVerse(1);
+    setTargetVerseToScroll(1);
+    setIsCommandPaletteOpen(false);
+    setIsBookPickerOpen(false);
+    setActiveConceptSlug(null);
+    setCompareVerseNum(null);
+  }, []);
 
   // Global Keyboard Shortcuts (Ctrl+K, J, K, P, ←, →, Esc)
   useEffect(() => {
@@ -233,46 +310,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, compareVerseNum, activeConceptSlug, verses.length]);
-
-  const handleNavigateChapter = useCallback(
-    (delta: number) => {
-      if (!currentBook) return;
-      const target = currentChapter + delta;
-      if (target >= 1 && target <= currentBook.total_chapters) {
-        setCurrentChapter(target);
-        setSelectedVerse(1);
-        setTargetVerseToScroll(1);
-      }
-    },
-    [currentBook, currentChapter]
-  );
-
-  const handleSelectPassage = (book: Book, chapter: number, verse?: number) => {
-    setCurrentBook(book);
-    setCurrentChapter(chapter);
-    setSelectedVerse(verse || 1);
-    setTargetVerseToScroll(verse || 1);
-    setIsBookPickerOpen(false);
-    setIsCommandPaletteOpen(false);
-    setActiveView('reader');
-  };
-
-  const handleToggleBookmark = (verseNum: number) => {
-    setBookmarks((prev) =>
-      prev.includes(verseNum) ? prev.filter((v) => v !== verseNum) : [...prev, verseNum]
-    );
-  };
-
-  const handleGoHome = () => {
-    setActiveView('reader');
-    setSelectedVerse(1);
-    setTargetVerseToScroll(1);
-    setIsCommandPaletteOpen(false);
-    setIsBookPickerOpen(false);
-    setActiveConceptSlug(null);
-    setCompareVerseNum(null);
-  };
+  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, compareVerseNum, activeConceptSlug, verses.length, handleNavigateChapter]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -374,11 +412,9 @@ export function App() {
               onSelectVerse={setSelectedVerse}
               bookmarks={bookmarks}
               onToggleBookmark={handleToggleBookmark}
-              onSelectConcept={(slug) => setActiveConceptSlug(slug)}
-              onCompareVerse={(vNum) => setCompareVerseNum(vNum)}
-              onSearchWord={() => {
-                setIsCommandPaletteOpen(true);
-              }}
+              onSelectConcept={handleSelectConcept}
+              onCompareVerse={handleCompareVerse}
+              onSearchWord={handleSearchWord}
               onNavigateChapter={handleNavigateChapter}
               targetVerseToScroll={targetVerseToScroll}
             />
@@ -386,7 +422,7 @@ export function App() {
 
           {activeView === 'study' && (
             <StudyCatalogView
-              onSelectConcept={(slug) => setActiveConceptSlug(slug)}
+              onSelectConcept={handleSelectConcept}
               onNavigateToPassage={(bookId, chapter) => {
                 const b = books.find((x) => x.id === bookId);
                 if (b) handleSelectPassage(b, chapter, 1);
@@ -424,7 +460,7 @@ export function App() {
         versions={versions}
         currentVersion={currentVersion}
         onSelectPassage={handleSelectPassage}
-        onSelectConcept={(slug) => setActiveConceptSlug(slug)}
+        onSelectConcept={handleSelectConcept}
         onToggleParallel={() => setParallelMode((prev) => !prev)}
         onSelectTheme={setTheme}
         onOpenSettings={() => setActiveView('settings')}

@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +101,7 @@ impl DatabaseManager {
         let _ = conn.execute("PRAGMA synchronous = NORMAL", []);
         let _ = conn.execute("PRAGMA cache_size = -64000", []);
         let _ = conn.execute("PRAGMA temp_store = MEMORY", []);
+        let _ = conn.execute("PRAGMA mmap_size = 268435456", []);
 
         Ok(Self { conn, resource_dir })
     }
@@ -203,16 +205,18 @@ impl DatabaseManager {
             Ok((verse_num, badge))
         }).map_err(|e| e.to_string())?;
 
+        let mut by_verse: HashMap<i32, Vec<ConceptOccurrenceBadge>> = HashMap::new();
         for r in occ_rows {
             if let Ok((v_num, badge)) = r {
-                for verse in verses.iter_mut() {
-                    if verse.verse == v_num {
-                        // Avoid duplicates of same concept in same verse
-                        if !verse.concepts.iter().any(|c| c.concept_id == badge.concept_id) {
-                            verse.concepts.push(badge.clone());
-                        }
-                    }
+                let list = by_verse.entry(v_num).or_default();
+                if !list.iter().any(|c| c.concept_id == badge.concept_id) {
+                    list.push(badge);
                 }
+            }
+        }
+        for verse in verses.iter_mut() {
+            if let Some(list) = by_verse.remove(&verse.verse) {
+                verse.concepts = list;
             }
         }
 

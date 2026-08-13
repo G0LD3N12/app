@@ -53,14 +53,14 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
 
   // Scroll to target verse when updated
   useEffect(() => {
-    if (targetVerseToScroll !== null && targetVerseToScroll > 0) {
-      setTimeout(() => {
-        const el = document.getElementById(`verse-${targetVerseToScroll}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 80);
-    }
+    if (targetVerseToScroll === null || targetVerseToScroll <= 0) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`verse-${targetVerseToScroll}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 80);
+    return () => window.clearTimeout(timer);
   }, [targetVerseToScroll, verses]);
 
   // Line height numeric multiplier

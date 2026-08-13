@@ -11,6 +11,32 @@ const isTauriEnv = (): boolean => {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 };
 
+const CHAPTER_CACHE_LIMIT = 24;
+const chapterCache = new Map<string, VerseWithStudy[]>();
+const chapterInflight = new Map<string, Promise<VerseWithStudy[]>>();
+
+function chapterCacheKey(versionId: string, bookId: number, chapter: number): string {
+  return `${versionId}:${bookId}:${chapter}`;
+}
+
+function rememberChapter(key: string, data: VerseWithStudy[]): void {
+  if (chapterCache.has(key)) {
+    chapterCache.delete(key);
+  } else if (chapterCache.size >= CHAPTER_CACHE_LIMIT) {
+    const oldest = chapterCache.keys().next().value;
+    if (oldest) chapterCache.delete(oldest);
+  }
+  chapterCache.set(key, data);
+}
+
+function takeCachedChapter(key: string): VerseWithStudy[] | undefined {
+  const cached = chapterCache.get(key);
+  if (!cached) return undefined;
+  chapterCache.delete(key);
+  chapterCache.set(key, cached);
+  return cached;
+}
+
 export async function fetchVersions(): Promise<BibleVersion[]> {
   if (isTauriEnv()) {
     return await invoke<BibleVersion[]>('get_versions');
@@ -42,15 +68,38 @@ export async function fetchChapter(
   bookId: number,
   chapter: number
 ): Promise<VerseWithStudy[]> {
-  if (isTauriEnv()) {
-    return await invoke<VerseWithStudy[]>('get_chapter', {
-      versionId,
-      bookId,
-      chapter,
-    });
-  }
+  const key = chapterCacheKey(versionId, bookId, chapter);
+  const cached = takeCachedChapter(key);
+  if (cached) return cached;
 
-  // Fallback demo mock
+  const pending = chapterInflight.get(key);
+  if (pending) return pending;
+
+  const load = (async () => {
+    try {
+      const data = isTauriEnv()
+        ? await invoke<VerseWithStudy[]>('get_chapter', {
+            versionId,
+            bookId,
+            chapter,
+          })
+        : mockChapter(versionId, bookId, chapter);
+      rememberChapter(key, data);
+      return data;
+    } finally {
+      chapterInflight.delete(key);
+    }
+  })();
+
+  chapterInflight.set(key, load);
+  return load;
+}
+
+function mockChapter(
+  versionId: string,
+  bookId: number,
+  chapter: number
+): VerseWithStudy[] {
   return [
     {
       id: 1,
