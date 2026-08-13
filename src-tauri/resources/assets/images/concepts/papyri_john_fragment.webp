@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+            <rect width="1200" height="900" fill="#18181b"/>
+            <rect x="420" y="220" width="360" height="480" fill="#78350f" rx="16" transform="rotate(3 600 450)"/>
+            <rect x="440" y="240" width="320" height="440" fill="#a16207" rx="12" transform="rotate(3 600 450)"/>
+            <text x="600" y="140" fill="#fef08a" font-family="system-ui, sans-serif" font-size="40" font-weight="700" text-anchor="middle">Papiro P52 - Evangelio según Juan</text>
+            <text x="600" y="185" fill="#a1a1aa" font-family="system-ui, sans-serif" font-size="20" text-anchor="middle">El testimonio manuscrito más antiguo del Nuevo Testamento (c. 125 d.C.)</text>
+        </svg>

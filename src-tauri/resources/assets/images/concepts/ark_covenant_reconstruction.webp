@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+            <rect width="1200" height="800" fill="#1c1917"/>
+            <rect x="350" y="380" width="500" height="240" fill="#d97706" stroke="#fbbf24" stroke-width="6" rx="10"/>
+            <line x1="200" y1="500" x2="1000" y2="500" stroke="#f59e0b" stroke-width="14" stroke-linecap="round"/>
+            <path d="M380 380 Q500 240 590 340" fill="none" stroke="#fde68a" stroke-width="12" stroke-linecap="round"/>
+            <path d="M820 380 Q700 240 610 340" fill="none" stroke="#fde68a" stroke-width="12" stroke-linecap="round"/>
+            <text x="600" y="180" fill="#fef08a" font-family="system-ui, sans-serif" font-size="38" font-weight="700" text-anchor="middle">El Arca del Testimonio y el Propiciatorio</text>
+            <text x="600" y="230" fill="#ca8a04" font-family="system-ui, sans-serif" font-size="20" text-anchor="middle">Mobiliario Sagrado de Madera de Acacia Recubierto de Oro Puro</text>
+        </svg>

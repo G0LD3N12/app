@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+            <defs>
+                <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#1e293b"/>
+                    <stop offset="50%" stop-color="#334155"/>
+                    <stop offset="100%" stop-color="#0f172a"/>
+                </linearGradient>
+            </defs>
+            <rect width="1200" height="800" fill="url(#g1)"/>
+            <path d="M100 650 L300 450 L500 580 L800 350 L1100 650 Z" fill="#475569" opacity="0.6"/>
+            <path d="M200 650 L450 490 L650 590 L950 400 L1150 650 Z" fill="#64748b" opacity="0.8"/>
+            <rect x="350" y="420" width="120" height="180" fill="#94a3b8" rx="8"/>
+            <rect x="520" y="380" width="160" height="220" fill="#cbd5e1" rx="8"/>
+            <rect x="730" y="440" width="140" height="160" fill="#94a3b8" rx="8"/>
+            <text x="600" y="240" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="42" font-weight="700" text-anchor="middle">Tel Rumeida - Hebrón Arqueológico</text>
+            <text x="600" y="290" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="22" text-anchor="middle">Asentamiento Cananeo y Murallas Ciclópeas (Edad del Bronce)</text>
+        </svg>

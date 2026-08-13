@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+            <rect width="1200" height="800" fill="#0f172a"/>
+            <line x1="600" y1="260" x2="600" y2="680" stroke="#78350f" stroke-width="16" stroke-linecap="round"/>
+            <path d="M550 300 Q650 340 550 390 T650 470 T550 550" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+            <text x="600" y="160" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="38" font-weight="700" text-anchor="middle">La Serpiente de Bronce en el Desierto</text>
+            <text x="600" y="210" fill="#34d399" font-family="system-ui, sans-serif" font-size="22" text-anchor="middle">Números 21 / Tipología de Juan 3:14</text>
+        </svg>
