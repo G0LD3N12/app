@@ -1,7 +1,7 @@
 import React from 'react';
-import { Menu, BookOpen, Search, Sparkles, Settings, ChevronRight, PanelTopClose, PanelTopOpen } from 'lucide-react';
+import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelTopClose, PanelTopOpen } from 'lucide-react';
 
-export type AppView = 'reader' | 'study' | 'settings';
+export type AppView = 'reader' | 'study' | 'settings' | 'deep-study';
 
 interface SidebarProps {
   isExpanded: boolean;
@@ -12,6 +12,43 @@ interface SidebarProps {
   hideTopBar: boolean;
   onToggleHideTopBar: () => void;
 }
+
+const ObsidianSidebarIcon: React.FC<{ isExpanded: boolean; size?: number }> = ({ isExpanded, size = 19 }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="obsidian-sidebar-icon"
+    >
+      {/* Outer rounded window frame */}
+      <rect
+        x="3"
+        y="3"
+        width="18"
+        height="18"
+        rx="4"
+        className="obsidian-sidebar-frame"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Inner sidebar indicator bar: morphs between thin line and wide solid bar */}
+      <rect
+        x="6"
+        y="6"
+        width={isExpanded ? 4.5 : 1.6}
+        height="12"
+        rx={isExpanded ? 1.5 : 0.8}
+        fill="currentColor"
+        className={`obsidian-sidebar-bar ${isExpanded ? 'expanded' : 'collapsed'}`}
+      />
+    </svg>
+  );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isExpanded,
@@ -32,18 +69,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'search',
-      label: 'Búsqueda Rápida',
+      label: 'Buscar',
       icon: Search,
       iconClass: 'icon-anim-search',
       action: onTriggerSearch,
       isAction: true,
-      shortcut: 'Ctrl+F',
+      shortcut: 'Ctrl+K',
     },
     {
       id: 'study' as AppView,
-      label: 'Catálogo de Estudio',
-      icon: Sparkles,
-      iconClass: 'icon-anim-sparkles',
+      label: 'Estudiar',
+      icon: Glasses,
+      iconClass: 'icon-anim-glasses',
       action: () => onSelectView('study'),
     },
     {
@@ -64,8 +101,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={onToggleExpand}
           title={isExpanded ? 'Minimizar barra lateral' : 'Expandir barra lateral'}
         >
-          <div className="icon-anim-menu">
-            <Menu size={20} />
+          <div className="sidebar-icon-wrapper">
+            <ObsidianSidebarIcon isExpanded={isExpanded} size={19} />
           </div>
           {isExpanded && <span className="sidebar-header-title">Navegación</span>}
         </button>
@@ -85,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={!isExpanded ? `${item.label} ${item.shortcut ? `(${item.shortcut})` : ''}` : undefined}
             >
               <div className={`sidebar-icon-wrapper ${item.iconClass}`}>
-                <Icon size={20} />
+                <Icon size={19} />
               </div>
 
               {isExpanded && (
@@ -106,31 +143,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           className={`sidebar-nav-item ${hideTopBar ? 'active' : ''}`}
           onClick={onToggleHideTopBar}
-          title={hideTopBar ? 'Restaurar barra superior fija' : 'Ocultar barra superior (Modo Zen)'}
+          title={hideTopBar ? 'Restaurar barra superior' : 'Modo Zen'}
         >
           <div className="sidebar-icon-wrapper icon-anim-zen">
             {hideTopBar ? <PanelTopOpen size={18} /> : <PanelTopClose size={18} />}
           </div>
           {isExpanded && (
             <div className="sidebar-label-group">
-              <span className="sidebar-item-label">{hideTopBar ? 'Ver Barra Superior' : 'Modo Zen (Sin Barra)'}</span>
+              <span className="sidebar-item-label">Modo Zen</span>
             </div>
           )}
         </button>
-      </div>
-
-      {/* Sidebar Footer */}
-      <div className="sidebar-footer">
-        {isExpanded ? (
-          <div className="sidebar-footer-expanded">
-            <span className="sidebar-footer-text">Verbum Desktop</span>
-            <span className="sidebar-footer-badge">100% Offline</span>
-          </div>
-        ) : (
-          <div className="sidebar-footer-collapsed" title="Verbum • 100% Offline">
-            <span className="offline-dot" />
-          </div>
-        )}
       </div>
     </aside>
   );

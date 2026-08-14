@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Book } from '../types';
-import { X, Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
+import {
+  LITERARY_GROUPS,
+  getBookMetadata,
+  getBookIconComponent,
+} from '../utils/bibleBooksData';
 
 interface BookPickerModalProps {
   isOpen: boolean;
@@ -15,174 +20,218 @@ export const BookPickerModal: React.FC<BookPickerModalProps> = ({
   isOpen,
   books,
   currentBook,
-  currentChapter: _currentChapter,
+  currentChapter,
   onSelectPassage,
   onClose,
 }) => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(currentBook);
   const [filterQuery, setFilterQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const selectedBookItemRef = useRef<HTMLButtonElement>(null);
+
+  // Sync selectedBook when modal opens or currentBook changes
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedBook(currentBook || (books.length > 0 ? books[0] : null));
+      setFilterQuery('');
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen, currentBook, books]);
+
+  // Scroll active book into view when opening
+  useEffect(() => {
+    if (isOpen && selectedBookItemRef.current) {
+      selectedBookItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Filter books according to search query
+  const filteredBooks = useMemo(() => {
+    const query = filterQuery.trim().toLowerCase();
+    if (!query) return books;
+    return books.filter((b) => {
+      const nameEs = b.name_es.toLowerCase();
+      const nameEn = b.name_en?.toLowerCase() || '';
+      const code = b.code.toLowerCase();
+      return nameEs.includes(query) || nameEn.includes(query) || code.includes(query);
+    });
+  }, [books, filterQuery]);
+
+  // Group filtered books by literary genre / testament
+  const groupedBooks = useMemo(() => {
+    const map = new Map<string, { group: typeof LITERARY_GROUPS[0]; books: Book[] }>();
+
+    // Initialize map with known literary groups in correct biblical order
+    for (const group of LITERARY_GROUPS) {
+      map.set(group.id, { group, books: [] });
+    }
+
+    for (const book of filteredBooks) {
+      const meta = getBookMetadata(book.code) || getBookMetadata(book.id);
+      const groupId = meta?.groupId || (book.testament === 'OT' ? 'historicos' : 'epistolas_generales');
+      if (!map.has(groupId)) {
+        map.set(groupId, {
+          group: { id: groupId, name: meta?.groupName || 'Libros', testament: book.testament },
+          books: [],
+        });
+      }
+      map.get(groupId)!.books.push(book);
+    }
+
+    // Return only groups that have matching books
+    return Array.from(map.values()).filter((g) => g.books.length > 0);
+  }, [filteredBooks]);
+
+  // Update selected book if current selection was filtered out
+  useEffect(() => {
+    if (filteredBooks.length > 0) {
+      const exists = filteredBooks.some((b) => b.id === selectedBook?.id);
+      if (!exists) {
+        setSelectedBook(filteredBooks[0]);
+      }
+    }
+  }, [filteredBooks, selectedBook]);
 
   if (!isOpen) return null;
 
-  const otBooks = books.filter(
-    (b) => b.testament === 'OT' && (b.name_es.toLowerCase().includes(filterQuery.toLowerCase()) || b.code.toLowerCase().includes(filterQuery.toLowerCase()))
-  );
-  const ntBooks = books.filter(
-    (b) => b.testament === 'NT' && (b.name_es.toLowerCase().includes(filterQuery.toLowerCase()) || b.code.toLowerCase().includes(filterQuery.toLowerCase()))
-  );
+  const totalChapters = selectedBook?.total_chapters || 1;
+  const isSelectedCurrent = currentBook && selectedBook && currentBook.id === selectedBook.id;
+
+  const testamentLabel = selectedBook?.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento';
 
   return (
-    <div className="search-modal-backdrop" onClick={onClose}>
-      <div
-        className="search-modal-card"
-        style={{ maxWidth: '850px', maxHeight: '85vh' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="search-input-header">
-          <Search size={18} color="var(--text-secondary)" />
-          <input
-            type="text"
-            className="search-input-main"
-            placeholder="Filtrar libros bíblicos (ej. Josué, Juan, Romanos)..."
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            autoFocus
-          />
-          <button className="icon-btn" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
+    <div className="book-picker-backdrop" onClick={onClose}>
+      <div className="book-picker-card" onClick={(e) => e.stopPropagation()}>
+        {/* Close Button Header */}
+        <button
+          className="book-picker-close-btn"
+          onClick={onClose}
+          aria-label="Cerrar selector"
+          title="Cerrar (Esc)"
+        >
+          <X size={18} />
+        </button>
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Books columns */}
-          <div
-            style={{
-              flex: '1.2',
-              overflowY: 'auto',
-              padding: '16px 20px',
-              borderRight: '1px solid var(--border-subtle)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}
-          >
-            {/* Old Testament */}
-            {otBooks.length > 0 && (
-              <div>
-                <h4 style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--accent-gold)', marginBottom: '8px', letterSpacing: '0.06em' }}>
-                  Antiguo Testamento ({otBooks.length})
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '6px' }}>
-                  {otBooks.map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={() => setSelectedBook(b)}
-                      style={{
-                        padding: '8px 10px',
-                        textAlign: 'left',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        fontWeight: selectedBook?.id === b.id ? '700' : '500',
-                        backgroundColor: selectedBook?.id === b.id ? 'var(--accent-gold-soft)' : 'var(--bg-surface-elevated)',
-                        color: selectedBook?.id === b.id ? 'var(--accent-gold)' : 'var(--text-primary)',
-                        border: selectedBook?.id === b.id ? '1px solid var(--accent-gold)' : '1px solid transparent',
-                        transition: 'all 0.12s ease',
-                      }}
-                    >
-                      {b.name_es}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* New Testament */}
-            {ntBooks.length > 0 && (
-              <div>
-                <h4 style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--badge-biblical)', marginBottom: '8px', letterSpacing: '0.06em' }}>
-                  Nuevo Testamento ({ntBooks.length})
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '6px' }}>
-                  {ntBooks.map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={() => setSelectedBook(b)}
-                      style={{
-                        padding: '8px 10px',
-                        textAlign: 'left',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        fontWeight: selectedBook?.id === b.id ? '700' : '500',
-                        backgroundColor: selectedBook?.id === b.id ? 'var(--badge-biblical-bg)' : 'var(--bg-surface-elevated)',
-                        color: selectedBook?.id === b.id ? 'var(--badge-biblical)' : 'var(--text-primary)',
-                        border: selectedBook?.id === b.id ? '1px solid var(--badge-biblical)' : '1px solid transparent',
-                        transition: 'all 0.12s ease',
-                      }}
-                    >
-                      {b.name_es}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        {/* Left Column: Book Navigation with Search & Semantic Categorized List */}
+        <div className="book-picker-sidebar">
+          {/* Search Header */}
+          <div className="book-picker-search-container">
+            <Search size={15} className="book-picker-search-icon" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="book-picker-search-input"
+              placeholder="Ir a libro..."
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+            />
+            {filterQuery && (
+              <button
+                className="book-picker-search-clear"
+                onClick={() => {
+                  setFilterQuery('');
+                  searchInputRef.current?.focus();
+                }}
+              >
+                <X size={13} />
+              </button>
             )}
           </div>
 
-          {/* Chapters grid */}
-          <div
-            style={{
-              flex: '1',
-              overflowY: 'auto',
-              padding: '16px 20px',
-              backgroundColor: 'var(--bg-app)',
-            }}
-          >
-            {selectedBook ? (
-              <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', marginBottom: '12px', color: 'var(--text-primary)' }}>
-                  {selectedBook.name_es} — Capítulos (1 al {selectedBook.total_chapters})
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: '8px' }}>
-                  {Array.from({ length: selectedBook.total_chapters }, (_, i) => i + 1).map((ch) => (
-                    <button
-                      key={ch}
-                      onClick={() => onSelectPassage(selectedBook, ch)}
-                      style={{
-                        height: '42px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--bg-surface-elevated)',
-                        border: '1px solid var(--border-subtle)',
-                        fontSize: '0.92rem',
-                        fontWeight: '600',
-                        color: 'var(--text-primary)',
-                        transition: 'all 0.12s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--accent-gold-soft)';
-                        e.currentTarget.style.borderColor = 'var(--accent-gold)';
-                        e.currentTarget.style.color = 'var(--accent-gold)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--bg-surface-elevated)';
-                        e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                        e.currentTarget.style.color = 'var(--text-primary)';
-                      }}
-                    >
-                      {ch}
-                    </button>
-                  ))}
-                </div>
+          {/* Grouped Books List */}
+          <div className="book-picker-books-list custom-scrollbar">
+            {groupedBooks.length === 0 ? (
+              <div className="book-picker-empty">
+                <span>No se encontraron libros</span>
               </div>
             ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', marginTop: '40px' }}>
-                Selecciona un libro a la izquierda para ver sus capítulos
-              </p>
+              groupedBooks.map(({ group, books: groupBooks }) => (
+                <div key={group.id} className="book-picker-group">
+                  <div className="book-picker-group-title">{group.name}</div>
+                  <div className="book-picker-group-items">
+                    {groupBooks.map((book) => {
+                      const isSelected = selectedBook?.id === book.id;
+                      const IconComponent = getBookIconComponent(book);
+
+                      return (
+                        <button
+                          key={book.id}
+                          ref={isSelected ? selectedBookItemRef : null}
+                          className={`book-picker-item ${isSelected ? 'active' : ''}`}
+                          onClick={() => setSelectedBook(book)}
+                        >
+                          <IconComponent
+                            size={16}
+                            strokeWidth={1.75}
+                            className="book-picker-item-icon"
+                          />
+                          <span className="book-picker-item-name">{book.name_es}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
             )}
           </div>
+        </div>
+
+        {/* Right Column: Book Title & Circular Chapters Grid */}
+        <div className="book-picker-content">
+          {selectedBook ? (
+            <div className="book-picker-detail">
+              {/* Header Title & Subtitle */}
+              <div className="book-picker-detail-header">
+                <h2 className="book-picker-book-title">{selectedBook.name_es}</h2>
+                <p className="book-picker-book-subtitle">
+                  {testamentLabel} · {totalChapters} {totalChapters === 1 ? 'capítulo' : 'capítulos'}
+                </p>
+              </div>
+
+              {/* Chapters Circular Grid */}
+              <div className="book-picker-chapters-grid-container custom-scrollbar">
+                <div className="book-picker-chapters-grid">
+                  {Array.from({ length: totalChapters }, (_, i) => i + 1).map((ch) => {
+                    const isCurrentChapter = isSelectedCurrent && ch === currentChapter;
+
+                    return (
+                      <button
+                        key={ch}
+                        className={`book-picker-chapter-circle ${isCurrentChapter ? 'active' : ''}`}
+                        onClick={() => {
+                          onSelectPassage(selectedBook, ch);
+                          onClose();
+                        }}
+                      >
+                        {ch}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="book-picker-no-selection">
+              <p>Selecciona un libro para ver sus capítulos</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+export default BookPickerModal;

@@ -7,6 +7,9 @@ import {
   ScriptureFont,
   LineHeightPreset,
   MaxWidthPreset,
+  SelectionStudyRequest,
+  StudyExegesisResult,
+  AIProviderConfig,
 } from './types';
 import { fetchVersions, fetchBooks, fetchChapter } from './services/bibleService';
 import { Header } from './components/Header';
@@ -14,8 +17,10 @@ import { Sidebar, AppView } from './components/Sidebar';
 import { BibleReader } from './components/BibleReader';
 import { SettingsView } from './components/SettingsView';
 import { StudyCatalogView } from './components/StudyCatalogView';
+import { DeepStudyView } from './components/DeepStudyView';
 import { CommandPalette } from './components/CommandPalette';
 import { StudyDrawer } from './components/StudyDrawer';
+import { TextSelectionToolbar } from './components/TextSelectionToolbar';
 import { BookPickerModal } from './components/BookPickerModal';
 import { VerseCompareModal } from './components/VerseCompareModal';
 import { BookOpen, Search, PanelTopOpen, Columns2 } from 'lucide-react';
@@ -29,7 +34,7 @@ export function App() {
   const [verses, setVerses] = useState<VerseWithStudy[]>([]);
   const [targetVerseToScroll, setTargetVerseToScroll] = useState<number | null>(null);
 
-  // Parallel Split View
+  // Parallel Mode State (Two Column Reader)
   const [parallelMode, setParallelMode] = useState<boolean>(() => {
     return localStorage.getItem('verbum_parallel_mode') === 'true';
   });
@@ -38,31 +43,71 @@ export function App() {
   });
   const [parallelVerses, setParallelVerses] = useState<VerseWithStudy[]>([]);
 
-  // Navigation View & Sidebar
+  // Navigation & View State
   const [activeView, setActiveView] = useState<AppView>('reader');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(() => {
     return localStorage.getItem('verbum_sidebar_expanded') === 'true';
   });
-
-  // TopBar Visibility / Zen Mode
   const [hideTopBar, setHideTopBar] = useState<boolean>(() => {
     return localStorage.getItem('verbum_hide_topbar') === 'true';
   });
 
-  // Modals & Command Palette
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isBookPickerOpen, setIsBookPickerOpen] = useState(false);
+  // Search language filter (empty array = all languages)
+  const [searchLanguages, setSearchLanguages] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('verbum_search_languages') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+  const handleChangeSearchLanguages = (langs: string[]) => {
+    setSearchLanguages(langs);
+    localStorage.setItem('verbum_search_languages', JSON.stringify(langs));
+  };
+
+  // Concept Drawer & Modals
   const [activeConceptSlug, setActiveConceptSlug] = useState<string | null>(null);
+  const [isBookPickerOpen, setIsBookPickerOpen] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [isVersionLibraryOpen, setIsVersionLibraryOpen] = useState<boolean>(false);
+  const [versionLibraryTarget, setVersionLibraryTarget] = useState<'primary' | 'secondary'>('primary');
   const [compareVerseNum, setCompareVerseNum] = useState<number | null>(null);
 
-  // Verse Interaction & Bookmarks
+  const handleOpenVersionLibrary = (target: 'primary' | 'secondary' = 'primary') => {
+    setVersionLibraryTarget(target);
+    setIsVersionLibraryOpen(true);
+  };
+
+  // AI & Deep Study State
+  const [activeAIRequest, setActiveAIRequest] = useState<SelectionStudyRequest | null>(null);
+  const [deepStudyResult, setDeepStudyResult] = useState<StudyExegesisResult | null>(null);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
+
+  // Bookmarks
   const [bookmarks, setBookmarks] = useState<number[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('verbum_bookmarks') || '[]');
     } catch {
       return [];
     }
+  });
+
+  // AI Config
+  const [aiConfig, setAiConfig] = useState<AIProviderConfig>(() => {
+    try {
+      const saved = localStorage.getItem('verbum_ai_config');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {
+      provider_type: 'gemini',
+      ollama_endpoint: 'http://localhost:11434',
+      model_name: 'gemini-1.5-flash',
+      confirm_before_send: true,
+      local_only_privacy: false,
+    };
   });
 
   // Appearance & Reader Typography
@@ -84,7 +129,9 @@ export function App() {
 
   // Apply theme to document
   useEffect(() => {
+    const isDark = theme !== 'white' && theme !== 'sepia' && theme !== 'light';
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.classList.toggle('dark', isDark);
     localStorage.setItem('verbum_theme', theme);
   }, [theme]);
 
@@ -227,7 +274,48 @@ export function App() {
     );
   }, []);
 
+  const handleProfundizarAI = useCallback(
+    (selectedText: string, verseNum: number) => {
+      if (!currentBook) return;
+      const req: SelectionStudyRequest = {
+        selected_text: selectedText,
+        book_id: currentBook.id,
+        book_name: currentBook.name_es,
+        chapter: currentChapter,
+        start_verse: verseNum,
+        end_verse: verseNum,
+        version_id: currentVersion,
+        depth: 'quick',
+      };
+      setActiveConceptSlug(null);
+      setActiveAIRequest(req);
+    },
+    [currentBook, currentChapter, currentVersion]
+  );
+
+  const handleOpenDeepStudy = useCallback((result: StudyExegesisResult) => {
+    setDeepStudyResult(result);
+    setActiveView('deep-study');
+  }, []);
+
+  const handleNavigateToPassage = useCallback(
+    (bookName: string, chapter: number, verse: number) => {
+      const targetBook = books.find(
+        (b) =>
+          b.name_es.toLowerCase() === bookName.toLowerCase() ||
+          b.name_en.toLowerCase() === bookName.toLowerCase()
+      );
+      if (targetBook) {
+        handleSelectPassage(targetBook, chapter, verse);
+        setActiveConceptSlug(null);
+        setActiveAIRequest(null);
+      }
+    },
+    [books, handleSelectPassage]
+  );
+
   const handleSelectConcept = useCallback((slug: string) => {
+    setActiveAIRequest(null);
     setActiveConceptSlug(slug);
   }, []);
 
@@ -246,6 +334,7 @@ export function App() {
     setIsCommandPaletteOpen(false);
     setIsBookPickerOpen(false);
     setActiveConceptSlug(null);
+    setActiveAIRequest(null);
     setCompareVerseNum(null);
   }, []);
 
@@ -303,6 +392,7 @@ export function App() {
       if (e.key === 'Escape') {
         if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
         if (isBookPickerOpen) setIsBookPickerOpen(false);
+        if (isVersionLibraryOpen) setIsVersionLibraryOpen(false);
         if (compareVerseNum !== null) setCompareVerseNum(null);
         if (activeConceptSlug !== null) setActiveConceptSlug(null);
       }
@@ -310,7 +400,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, compareVerseNum, activeConceptSlug, verses.length, handleNavigateChapter]);
+  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses.length, handleNavigateChapter]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -340,6 +430,12 @@ export function App() {
           maxWidthPreset={maxWidthPreset}
           onChangeMaxWidth={setMaxWidthPreset}
           onGoHome={handleGoHome}
+          theme={theme}
+          onSelectTheme={setTheme}
+          isVersionPopoverOpen={isVersionLibraryOpen}
+          onCloseVersionPopover={() => setIsVersionLibraryOpen(false)}
+          versionPopoverTarget={versionLibraryTarget}
+          onOpenVersionPopover={handleOpenVersionLibrary}
         />
       )}
 
@@ -417,6 +513,7 @@ export function App() {
               onSearchWord={handleSearchWord}
               onNavigateChapter={handleNavigateChapter}
               targetVerseToScroll={targetVerseToScroll}
+              onOpenVersionLibrary={handleOpenVersionLibrary}
             />
           )}
 
@@ -427,6 +524,16 @@ export function App() {
                 const b = books.find((x) => x.id === bookId);
                 if (b) handleSelectPassage(b, chapter, 1);
               }}
+            />
+          )}
+
+          {activeView === 'deep-study' && deepStudyResult && (
+            <DeepStudyView
+              initialResult={deepStudyResult}
+              aiRequest={activeAIRequest}
+              aiConfig={aiConfig}
+              onBackToReader={() => setActiveView('reader')}
+              onNavigateToPassage={handleNavigateToPassage}
             />
           )}
 
@@ -441,6 +548,10 @@ export function App() {
               onSelectDefaultVersion={setCurrentVersion}
               hideTopBar={hideTopBar}
               onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
+              aiConfig={aiConfig}
+              onUpdateAIConfig={setAiConfig}
+              searchLanguages={searchLanguages}
+              onChangeSearchLanguages={handleChangeSearchLanguages}
             />
           )}
         </main>
@@ -449,7 +560,14 @@ export function App() {
       {/* Slide-over Study Drawer */}
       <StudyDrawer
         slug={activeConceptSlug}
-        onClose={() => setActiveConceptSlug(null)}
+        aiRequest={activeAIRequest}
+        aiConfig={aiConfig}
+        onClose={() => {
+          setActiveConceptSlug(null);
+          setActiveAIRequest(null);
+        }}
+        onOpenDeepStudy={handleOpenDeepStudy}
+        onNavigateToPassage={handleNavigateToPassage}
       />
 
       {/* Raycast-style Super Command Palette (Ctrl+K & Ctrl+F) */}
@@ -459,6 +577,7 @@ export function App() {
         books={books}
         versions={versions}
         currentVersion={currentVersion}
+        searchLanguages={searchLanguages}
         onSelectPassage={handleSelectPassage}
         onSelectConcept={handleSelectConcept}
         onToggleParallel={() => setParallelMode((prev) => !prev)}
@@ -486,6 +605,17 @@ export function App() {
         verseNum={compareVerseNum || 1}
         versions={versions}
       />
+
+      {/* Root-level Floating Context Selection Toolbar */}
+      {activeView === 'reader' && (
+        <TextSelectionToolbar
+          onProfundizarAI={handleProfundizarAI}
+          onSearchSelection={handleSearchWord}
+          onCompareVerse={handleCompareVerse}
+          bookName={currentBook?.name_es || ''}
+          chapter={currentChapter}
+        />
+      )}
     </div>
   );
 }

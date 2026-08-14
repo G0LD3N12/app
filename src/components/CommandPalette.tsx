@@ -19,6 +19,7 @@ interface CommandPaletteProps {
   books: Book[];
   versions: BibleVersion[];
   currentVersion: string;
+  searchLanguages: string[];
   onSelectPassage: (book: Book, chapter: number, verse?: number) => void;
   onSelectConcept: (slug: string) => void;
   onToggleParallel: () => void;
@@ -78,6 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   books,
   versions,
   currentVersion,
+  searchLanguages,
   onSelectPassage,
   onSelectConcept,
   onToggleParallel,
@@ -109,7 +111,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const hits = await searchBible(query.trim(), [currentVersion], 20);
+        const searchableVersions =
+          searchLanguages.length === 0
+            ? versions.map((v) => v.id)
+            : versions.filter((v) => searchLanguages.includes(v.language)).map((v) => v.id);
+        const versionIds =
+          searchableVersions.length > 0 ? searchableVersions : [currentVersion];
+        const hits = await searchBible(query.trim(), versionIds, 20);
         setSearchResults(hits);
       } catch (err) {
         console.error('Command search error:', err);
@@ -117,7 +125,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }, 180);
 
     return () => clearTimeout(timer);
-  }, [query, currentVersion, isOpen]);
+  }, [query, currentVersion, isOpen, versions, searchLanguages]);
 
   const items = useMemo(() => {
     const next: CommandItem[] = [];

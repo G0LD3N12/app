@@ -268,7 +268,11 @@ impl DatabaseManager {
 
         // Build version filter IN (?, ?, ...)
         let versions_to_search = if version_ids.is_empty() {
-            vec!["rv1909".to_string(), "vbl".to_string(), "kjv".to_string(), "web".to_string()]
+            // No explicit versions: search across all installed versions
+            self.get_versions()?
+                .into_iter()
+                .map(|v| v.id)
+                .collect()
         } else {
             version_ids
         };
@@ -386,6 +390,70 @@ impl DatabaseManager {
         }
 
         Ok(concept)
+    }
+
+    pub fn get_all_concepts(&self) -> Result<Vec<StudyConceptDetail>, String> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, slug, term_es, term_en, concept_type, short_summary, historical_context_md, biblical_context_md, strongs_code
+             FROM concepts ORDER BY id ASC"
+        ).map_err(|e| e.to_string())?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok(StudyConceptDetail {
+                id: row.get(0)?,
+                slug: row.get(1)?,
+                term_es: row.get(2)?,
+                term_en: row.get(3)?,
+                concept_type: row.get(4)?,
+                short_summary: row.get(5)?,
+                historical_context_md: row.get(6)?,
+                biblical_context_md: row.get(7)?,
+                strongs_code: row.get(8)?,
+                images: Vec::new(),
+            })
+        }).map_err(|e| e.to_string())?;
+
+        let mut list = Vec::new();
+        for r in rows {
+            let mut concept = r.map_err(|e| e.to_string())?;
+
+            let mut img_stmt = self.conn.prepare(
+                "SELECT id, concept_id, file_path, title, caption, source_attribution, license, width, height
+                 FROM concept_images WHERE concept_id = ?1"
+            ).map_err(|e| e.to_string())?;
+
+            let img_rows = img_stmt.query_map([concept.id], |img_row| {
+                let file_path: String = img_row.get(2)?;
+                let mut data_content = None;
+                let full_path = self.resource_dir.join(&file_path);
+                if full_path.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&full_path) {
+                        data_content = Some(content);
+                    }
+                }
+
+                Ok(ConceptImage {
+                    id: img_row.get(0)?,
+                    concept_id: img_row.get(1)?,
+                    file_path,
+                    title: img_row.get(3)?,
+                    caption: img_row.get(4)?,
+                    source_attribution: img_row.get(5)?,
+                    license: img_row.get(6)?,
+                    width: img_row.get(7)?,
+                    height: img_row.get(8)?,
+                    data_content,
+                })
+            }).map_err(|e| e.to_string())?;
+
+            for img in img_rows {
+                concept.images.push(img.map_err(|e| e.to_string())?);
+            }
+
+            list.push(concept);
+        }
+
+        Ok(list)
     }
 }
 

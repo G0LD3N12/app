@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Book, VerseWithStudy, ScriptureFont, LineHeightPreset, MaxWidthPreset } from '../types';
 import { VerseItem } from './VerseItem';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface BibleReaderProps {
   currentBook: Book | null;
@@ -25,6 +25,7 @@ interface BibleReaderProps {
   onSearchWord: (word: string) => void;
   onNavigateChapter: (delta: number) => void;
   targetVerseToScroll: number | null;
+  onOpenVersionLibrary?: (target: 'primary' | 'secondary') => void;
 }
 
 export const BibleReader: React.FC<BibleReaderProps> = ({
@@ -48,6 +49,7 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
   onSearchWord,
   onNavigateChapter,
   targetVerseToScroll,
+  onOpenVersionLibrary,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -108,11 +110,23 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
             <span className="meta-separator">·</span>
             <span>{verses.length} versículos</span>
             <span className="meta-separator">·</span>
-            <span className="meta-version-badge">{versionShortName}</span>
+            <button
+              className="meta-version-badge-btn"
+              onClick={() => onOpenVersionLibrary?.('primary')}
+              title="Abrir biblioteca para traducción principal (Columna 1)"
+            >
+              {versionShortName}
+            </button>
             {parallelMode && secondaryVersionShortName && (
               <>
                 <span className="meta-separator">⇄</span>
-                <span className="meta-version-badge">{secondaryVersionShortName}</span>
+                <button
+                  className="meta-version-badge-btn"
+                  onClick={() => onOpenVersionLibrary?.('secondary')}
+                  title="Abrir biblioteca para traducción secundaria (Columna 2)"
+                >
+                  {secondaryVersionShortName}
+                </button>
               </>
             )}
           </div>
@@ -144,12 +158,22 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
           /* Parallel Split View (Side-by-Side Synchronized Verses) */
           <div className="parallel-verses-grid">
             <div className="parallel-column-header">
-              <div className="parallel-col-title primary">
+              <button
+                className="parallel-col-title-btn primary"
+                onClick={() => onOpenVersionLibrary?.('primary')}
+                title="Cambiar traducción izquierda (Columna 1)"
+              >
                 <span>{versionShortName}</span>
-              </div>
-              <div className="parallel-col-title secondary">
+                <ChevronDown size={11} />
+              </button>
+              <button
+                className="parallel-col-title-btn secondary"
+                onClick={() => onOpenVersionLibrary?.('secondary')}
+                title="Cambiar traducción derecha (Columna 2)"
+              >
                 <span>{secondaryVersionShortName || 'Traducción 2'}</span>
-              </div>
+                <ChevronDown size={11} />
+              </button>
             </div>
 
             <div className="parallel-rows-wrapper">

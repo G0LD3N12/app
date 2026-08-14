@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod commands;
 pub mod db;
 
@@ -20,12 +21,27 @@ fn resolve_resource_dir(app: &AppHandle) -> PathBuf {
         }
     }
 
-    let candidates = [
+    let mut candidates = vec![
         PathBuf::from("resources"),
         PathBuf::from("src-tauri/resources"),
         PathBuf::from("../src-tauri/resources"),
-        PathBuf::from("/home/g0ld3n/Projects/verbum-desktop/src-tauri/resources"),
     ];
+
+    if let Ok(curr) = std::env::current_dir() {
+        candidates.push(curr.join("resources"));
+        candidates.push(curr.join("src-tauri").join("resources"));
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            candidates.push(parent.join("resources"));
+            candidates.push(parent.join("../resources"));
+        }
+    }
+
+    if let Some(manifest) = option_env!("CARGO_MANIFEST_DIR") {
+        candidates.push(PathBuf::from(manifest).join("resources"));
+    }
 
     for c in &candidates {
         if c.join("bible.db").exists() {
@@ -59,6 +75,11 @@ pub fn run() {
             commands::get_chapter,
             commands::search_bible,
             commands::get_concept_detail,
+            commands::get_all_concepts,
+            commands::analyze_selection_ai,
+            commands::test_ai_connection,
+            commands::check_ollama_model_status,
+            commands::install_or_pull_ollama_model,
             commands::minimize_window,
             commands::toggle_maximize_window,
             commands::close_window,

@@ -121,3 +121,74 @@ export interface Bookmark {
   text_snippet: string;
   created_at: number;
 }
+
+export type StudyDepth = 'quick' | 'deep';
+
+export interface SelectionStudyRequest {
+  selected_text: string;
+  book_id: number;
+  book_name: string;
+  chapter: number;
+  start_verse: number;
+  end_verse: number;
+  version_id: string;
+  depth: StudyDepth;
+}
+
+export interface InterpretiveNote {
+  text: string;
+  note_type: 'observacion_textual' | 'inferencia_teologica' | 'tradicion_interpretativa' | string;
+}
+
+export interface RelatedPassage {
+  book_name: string;
+  chapter: number;
+  verse: number;
+  quote?: string;
+}
+
+export interface StudyExegesisResult {
+  title: string;
+  selection_type: string;
+  depth: StudyDepth | string;
+  is_heuristic_offline: boolean;
+  summary: string;
+  biblical_context: string;
+  historical_cultural_context?: string;
+  linguistic_context?: string;
+  interpretive_notes: InterpretiveNote[];
+  translation_nuance?: string;
+  related_passages: RelatedPassage[];
+  recommended_media: string[];
+  images: ConceptImage[];
+  provider_used: string;
+  model_used: string;
+}
+
+export interface AIProviderConfig {
+  provider_type: 'gemini' | 'ollama' | 'openai_compatible' | 'heuristic_offline';
+  ollama_endpoint: string;
+  model_name: string;
+  api_key?: string;
+  base_url?: string;
+  confirm_before_send: boolean;
+  local_only_privacy: boolean;
+}
+
+export interface AIConnectionStatus {
+  is_connected: boolean;
+  provider_type: string;
+  model_name: string;
+  message: string;
+  latency_ms?: number;
+}
+
+export interface OllamaModelInstallStatus {
+  is_ollama_running: boolean;
+  is_model_installed: boolean;
+  model_name: string;
+  installed_models: string[];
+  message: string;
+  progress_percent?: number;
+}
+

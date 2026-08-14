@@ -92,9 +92,57 @@ def run_tests():
         assert full_p.exists(), f"Missing image file at {full_p}"
         print(f"    - [{img[5]}] {img[3]} -> {img[4]} (verified file: {full_p.name})")
 
+    # 6. Test Dynamic Context Retrieval on Arbitrary Selections (No predefined concepts required)
+    print("\n--- Testing Dynamic Context Retrieval on Arbitrary Selections ---")
+    test_phrases = [
+        ("la cumbre del monte", 6, 15, 8),
+        ("escarlata", 23, 1, 18),
+        ("no se turbe vuestro corazón", 43, 14, 1),
+    ]
+
+    for phrase, b_id, ch, v_num in test_phrases:
+        # Retrieve primary verse
+        v_row = c.execute(
+            "SELECT text FROM verses WHERE version_id = 'rv1909' AND book_id = ? AND chapter = ? AND verse = ?",
+            (b_id, ch, v_num)
+        ).fetchone()
+        assert v_row is not None, f"Verse not found for {b_id} {ch}:{v_num}"
+        
+        # Test parallel translations retrieval
+        parallels = c.execute(
+            "SELECT version_id, text FROM verses WHERE book_id = ? AND chapter = ? AND verse = ? AND version_id != 'rv1909'",
+            (b_id, ch, v_num)
+        ).fetchall()
+        assert len(parallels) >= 2, f"Missing parallel translations for {b_id} {ch}:{v_num}"
+
+        # Test adaptive surrounding context
+        surrounding = c.execute(
+            "SELECT verse, text FROM verses WHERE version_id = 'rv1909' AND book_id = ? AND chapter = ? AND verse BETWEEN ? AND ?",
+            (b_id, ch, max(1, v_num - 2), v_num + 2)
+        ).fetchall()
+        assert len(surrounding) >= 1, f"Missing surrounding context for {b_id} {ch}:{v_num}"
+
+        # Test ranked FTS5 occurrences
+        clean_token = phrase.replace("'", "''")
+        fts_hits = c.execute("""
+            SELECT v.version_id, b.name_es, v.chapter, v.verse, snippet(verses_fts, 0, '«', '»', '...', 8)
+            FROM verses_fts
+            JOIN verses v ON verses_fts.rowid = v.id
+            JOIN books b ON v.book_id = b.id
+            WHERE verses_fts MATCH ? AND v.version_id = 'rv1909'
+            ORDER BY bm25(verses_fts)
+            LIMIT 5
+        """, (f'"{clean_token}"',)).fetchall()
+        
+        print(f"[✓] Arbitrary Selection «{phrase}» in Book {b_id} {ch}:{v_num}:")
+        print(f"    - Primary Text: «{v_row[0][:50]}...»")
+        print(f"    - Parallel Translations Retrieved: {len(parallels)}")
+        print(f"    - Surrounding Context Verses: {len(surrounding)}")
+        print(f"    - FTS5 Occurrences Ranked: {len(fts_hits)}")
+
     conn.close()
     print("\n==================================================")
-    print("      ALL TESTS AND VERIFICATIONS PASSED! (5/5)   ")
+    print("      ALL TESTS AND VERIFICATIONS PASSED! (6/6)   ")
     print("==================================================")
 
 if __name__ == "__main__":

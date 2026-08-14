@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { StudyConceptDetail } from '../types';
+import { fetchAllConcepts } from '../services/bibleService';
 import { Sparkles, BookOpen, Landmark, ChevronRight } from 'lucide-react';
 
 interface StudyCatalogViewProps {
@@ -6,95 +8,38 @@ interface StudyCatalogViewProps {
   onNavigateToPassage: (bookId: number, chapter: number) => void;
 }
 
-interface CatalogEntry {
-  slug: string;
-  title: string;
-  term_en: string;
-  category: 'both' | 'biblical_context' | 'historical';
-  summary: string;
-  bookId: number;
-  bookName: string;
-  chapter: number;
-  hasImages: boolean;
-}
-
 export const StudyCatalogView: React.FC<StudyCatalogViewProps> = ({
   onSelectConcept,
   onNavigateToPassage,
 }) => {
+  const [concepts, setConcepts] = useState<StudyConceptDetail[]>([]);
   const [filterCategory, setFilterCategory] = useState<'all' | 'both' | 'biblical_context' | 'historical'>('all');
+  const [loading, setLoading] = useState(true);
 
-  const concepts: CatalogEntry[] = [
-    {
-      slug: 'anaquitas',
-      title: 'Anaquitas (Hijos de Anac)',
-      term_en: 'Anakim',
-      category: 'both',
-      summary: 'Pueblo de gran estatura que habitaba la región montañosa de Hebrón; prototipo del temor humano vencido por la fe.',
-      bookId: 6,
-      bookName: 'Josué',
-      chapter: 11,
-      hasImages: true,
-    },
-    {
-      slug: 'cordero-pascual',
-      title: 'El Cordero Pascual / Cordero de Dios',
-      term_en: 'Passover Lamb',
-      category: 'both',
-      summary: 'El sacrificio sustitutivo central de Éxodo 12 que prefigura la redención mesiánica de Jesucristo.',
-      bookId: 43,
-      bookName: 'Juan',
-      chapter: 1,
-      hasImages: true,
-    },
-    {
-      slug: 'arca-del-pacto',
-      title: 'El Arca del Pacto y el Propiciatorio',
-      term_en: 'Ark of the Covenant',
-      category: 'both',
-      summary: 'Cofre sagrado de madera de acacia recubierto de oro puro; trono terrenal de la presencia de Yahweh.',
-      bookId: 2,
-      bookName: 'Éxodo',
-      chapter: 25,
-      hasImages: true,
-    },
-    {
-      slug: 'melquisedec',
-      title: 'Melquisedec (Rey de Salem)',
-      term_en: 'Melchizedek',
-      category: 'biblical_context',
-      summary: 'Rey de Salem y sacerdote del Dios Altísimo; prototipo del sacerdocio eterno y universal de Cristo.',
-      bookId: 1,
-      bookName: 'Génesis',
-      chapter: 14,
-      hasImages: false,
-    },
-    {
-      slug: 'logos-palabra',
-      title: 'El Verbo (Logos)',
-      term_en: 'The Word (Logos)',
-      category: 'both',
-      summary: 'El Verbo eterno encarnado que revela al Padre y sostiene la creación; eco supremo de Génesis 1.',
-      bookId: 43,
-      bookName: 'Juan',
-      chapter: 1,
-      hasImages: true,
-    },
-    {
-      slug: 'serpiente-de-bronce',
-      title: 'La Serpiente de Bronce (Nejustán)',
-      term_en: 'Bronze Serpent',
-      category: 'both',
-      summary: 'Símbolo de juicio y sanidad levantado por Moisés en el desierto; tipo de la crucifixión de Cristo.',
-      bookId: 4,
-      bookName: 'Números',
-      chapter: 21,
-      hasImages: true,
-    },
-  ];
+  useEffect(() => {
+    fetchAllConcepts()
+      .then((data) => {
+        setConcepts(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load study concepts:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Associated primary book passages for quick navigation
+  const passageMap: Record<string, { bookId: number; bookName: string; chapter: number }> = {
+    'anaquitas': { bookId: 6, bookName: 'Josué', chapter: 11 },
+    'cordero-pascual': { bookId: 43, bookName: 'Juan', chapter: 1 },
+    'arca-del-pacto': { bookId: 2, bookName: 'Éxodo', chapter: 25 },
+    'melquisedec': { bookId: 1, bookName: 'Génesis', chapter: 14 },
+    'logos-palabra': { bookId: 43, bookName: 'Juan', chapter: 1 },
+    'serpiente-de-bronce': { bookId: 4, bookName: 'Números', chapter: 21 },
+  };
 
   const filtered = concepts.filter(
-    (c) => filterCategory === 'all' || c.category === filterCategory
+    (c) => filterCategory === 'all' || c.concept_type === filterCategory
   );
 
   return (
@@ -106,7 +51,7 @@ export const StudyCatalogView: React.FC<StudyCatalogViewProps> = ({
             <h1 className="settings-title">Catálogo de Estudio Bíblico e Histórico</h1>
           </div>
           <p className="settings-subtitle">
-            Conceptos enriquecidos con tipología bíblica intertextual, datos arqueológicos y registros visuales
+            Conceptos dinámicos enlazados con tipología bíblica, registros arqueológicos y manuscritos antiguos
           </p>
         </div>
 
@@ -133,52 +78,63 @@ export const StudyCatalogView: React.FC<StudyCatalogViewProps> = ({
         </div>
 
         {/* Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-          {filtered.map((item) => (
-            <div
-              key={item.slug}
-              className="catalog-card"
-              onClick={() => onSelectConcept(item.slug)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <span className={`concept-badge ${item.category}`}>
-                  {item.category === 'both'
-                    ? 'Histórico & Teológico'
-                    : item.category === 'historical'
-                    ? 'Histórico'
-                    : 'Contexto Bíblico'}
-                </span>
-                {item.hasImages && (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Landmark size={12} /> Galería Arqueológica
-                  </span>
-                )}
-              </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+            Cargando conceptos desde la base de datos local...
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+            {filtered.map((item) => {
+              const passage = passageMap[item.slug] || { bookId: 1, bookName: 'Génesis', chapter: 1 };
+              const hasImages = item.images && item.images.length > 0;
 
-              <h3 className="catalog-card-title">{item.title}</h3>
-              <p className="catalog-card-summary">{item.summary}</p>
-
-              <div className="catalog-card-footer">
-                <button
-                  className="catalog-passage-link"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNavigateToPassage(item.bookId, item.chapter);
-                  }}
-                  title={`Abrir lector en ${item.bookName} ${item.chapter}`}
+              return (
+                <div
+                  key={item.slug}
+                  className="catalog-card"
+                  onClick={() => onSelectConcept(item.slug)}
                 >
-                  <BookOpen size={13} />
-                  <span>{item.bookName} {item.chapter}</span>
-                </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <span className={`concept-badge ${item.concept_type}`}>
+                      {item.concept_type === 'both'
+                        ? 'Histórico & Teológico'
+                        : item.concept_type === 'historical'
+                        ? 'Histórico'
+                        : 'Contexto Bíblico'}
+                    </span>
+                    {hasImages && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Landmark size={12} /> Galería Arqueológica
+                      </span>
+                    )}
+                  </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-gold)', fontSize: '0.82rem', fontWeight: '600' }}>
-                  <span>Ver estudio</span>
-                  <ChevronRight size={14} />
+                  <h3 className="catalog-card-title">{item.term_es}</h3>
+                  <p className="catalog-card-summary">{item.short_summary}</p>
+
+                  <div className="catalog-card-footer">
+                    <button
+                      className="catalog-passage-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigateToPassage(passage.bookId, passage.chapter);
+                      }}
+                      title={`Abrir lector en ${passage.bookName} ${passage.chapter}`}
+                    >
+                      <BookOpen size={13} />
+                      <span>{passage.bookName} {passage.chapter}</span>
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-gold)', fontSize: '0.82rem', fontWeight: '600' }}>
+                      <span>Ver estudio</span>
+                      <ChevronRight size={14} />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

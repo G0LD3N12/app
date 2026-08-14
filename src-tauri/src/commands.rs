@@ -46,6 +46,63 @@ pub fn get_concept_detail(
 }
 
 #[tauri::command]
+pub fn get_all_concepts(
+    state: State<'_, AppState>,
+) -> Result<Vec<StudyConceptDetail>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    db.get_all_concepts()
+}
+
+#[tauri::command]
+pub async fn analyze_selection_ai(
+    state: State<'_, AppState>,
+    request: crate::ai::SelectionStudyRequest,
+    config: Option<crate::ai::AIProviderConfig>,
+) -> Result<crate::ai::StudyExegesisResult, String> {
+    let default_config = crate::ai::AIProviderConfig {
+        provider_type: "ollama".to_string(),
+        ollama_endpoint: "http://localhost:11434".to_string(),
+        model_name: "qwen3:4b-instruct".to_string(),
+        api_key: None,
+        base_url: None,
+        confirm_before_send: true,
+        local_only_privacy: true,
+    };
+    let cfg = config.unwrap_or(default_config);
+
+    // Build context with lock, then release lock before async LLM call
+    let ctx = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        crate::ai::context_retrieval::build_selection_context(&db, &request)?
+    };
+
+    crate::ai::providers::execute_exegesis(&ctx, &request.depth, &cfg).await
+}
+
+#[tauri::command]
+pub async fn test_ai_connection(
+    config: crate::ai::AIProviderConfig,
+) -> Result<crate::ai::AIConnectionStatus, String> {
+    Ok(crate::ai::providers::ping_ai_provider(&config).await)
+}
+
+#[tauri::command]
+pub async fn check_ollama_model_status(
+    endpoint: String,
+    model_name: String,
+) -> Result<crate::ai::OllamaModelInstallStatus, String> {
+    Ok(crate::ai::ollama_installer::check_ollama_status(&endpoint, &model_name).await)
+}
+
+#[tauri::command]
+pub async fn install_or_pull_ollama_model(
+    endpoint: String,
+    model_name: String,
+) -> Result<crate::ai::OllamaModelInstallStatus, String> {
+    crate::ai::ollama_installer::install_or_pull_model(&endpoint, &model_name).await
+}
+
+#[tauri::command]
 pub fn minimize_window(window: tauri::Window) -> Result<(), String> {
     window.minimize().map_err(|e| e.to_string())
 }

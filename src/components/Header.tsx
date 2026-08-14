@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Book, BibleVersion, ScriptureFont, LineHeightPreset, MaxWidthPreset } from '../types';
-import { VerbumLogo } from './VerbumLogo';
+import { Book, BibleVersion, ScriptureFont, LineHeightPreset, MaxWidthPreset, AppTheme } from '../types';
 import { VersionPickerPopover } from './VersionPickerPopover';
 import { ReaderPreferencesPopover } from './ReaderPreferencesPopover';
 import { Search, BookOpen, ChevronDown, Columns2, Sliders, Minus, Square, X } from 'lucide-react';
@@ -27,6 +26,12 @@ interface HeaderProps {
   maxWidthPreset: MaxWidthPreset;
   onChangeMaxWidth: (preset: MaxWidthPreset) => void;
   onGoHome: () => void;
+  theme?: AppTheme;
+  onSelectTheme?: (theme: AppTheme) => void;
+  isVersionPopoverOpen?: boolean;
+  onCloseVersionPopover?: () => void;
+  versionPopoverTarget?: 'primary' | 'secondary';
+  onOpenVersionPopover?: (target: 'primary' | 'secondary') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,9 +55,36 @@ export const Header: React.FC<HeaderProps> = ({
   maxWidthPreset,
   onChangeMaxWidth,
   onGoHome,
+  theme,
+  onSelectTheme,
+  isVersionPopoverOpen: controlledIsOpen,
+  onCloseVersionPopover: controlledOnClose,
+  versionPopoverTarget: controlledTarget,
+  onOpenVersionPopover: controlledOnOpen,
 }) => {
-  const [isVersionPopoverOpen, setIsVersionPopoverOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [internalTarget, setInternalTarget] = useState<'primary' | 'secondary'>('primary');
   const [isPrefPopoverOpen, setIsPrefPopoverOpen] = useState(false);
+
+  const isPopoverOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const popoverTarget = controlledTarget !== undefined ? controlledTarget : internalTarget;
+
+  const handleOpenPopover = (target: 'primary' | 'secondary' = 'primary') => {
+    if (controlledOnOpen) {
+      controlledOnOpen(target);
+    } else {
+      setInternalTarget(target);
+      setInternalIsOpen(true);
+    }
+  };
+
+  const handleClosePopover = () => {
+    if (controlledOnClose) {
+      controlledOnClose();
+    } else {
+      setInternalIsOpen(false);
+    }
+  };
 
   const currentVerObj = versions.find((v) => v.id === currentVersion);
   const secondaryVerObj = versions.find((v) => v.id === secondaryVersion);
@@ -76,10 +108,17 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onGoHome}
           title="Ir a Lectura Principal (Inicio)"
         >
-          <div className="app-brand-logo-container">
-            <VerbumLogo size={22} />
-          </div>
-          <span className="app-brand-text">VERBUM</span>
+          <span className="app-brand-text">
+            {'VERBUM'.split('').map((char, i) => (
+              <span
+                key={i}
+                className="app-brand-char"
+                style={{ '--char-idx': i } as React.CSSProperties}
+              >
+                {char}
+              </span>
+            ))}
+          </span>
         </button>
 
         <span className="header-subtle-divider" />
@@ -111,25 +150,59 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="header-right no-drag">
         {/* Rich Version Selector Dropdown */}
         <div style={{ position: 'relative' }}>
-          <button
-            className={`version-dropdown-btn ${parallelMode ? 'has-parallel' : ''}`}
-            onClick={() => setIsVersionPopoverOpen((prev) => !prev)}
-            title="Seleccionar traducción bíblica o configurar vista paralela"
-          >
-            <span className="version-primary-tag">{currentVerObj?.short_name || 'RV1909'}</span>
-            {parallelMode && (
-              <>
-                <span className="version-parallel-sep">⇄</span>
-                <span className="version-secondary-tag">{secondaryVerObj?.short_name || 'KJV'}</span>
-              </>
-            )}
-            <ChevronDown size={11} />
-          </button>
+          {!parallelMode ? (
+            <button
+              className="version-dropdown-btn"
+              onClick={() => handleOpenPopover('primary')}
+              title="Abrir biblioteca de traducciones"
+            >
+              <span className="version-primary-tag">{currentVerObj?.short_name || 'RV1909'}</span>
+              <ChevronDown size={11} />
+            </button>
+          ) : (
+            <div className="version-dropdown-split-btn">
+              <button
+                className="version-split-side primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPopover('primary');
+                }}
+                title="Cambiar traducción izquierda (Columna 1)"
+              >
+                <span>{currentVerObj?.short_name || 'RV1909'}</span>
+              </button>
+
+              <span className="version-parallel-sep">⇄</span>
+
+              <button
+                className="version-split-side secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPopover('secondary');
+                }}
+                title="Cambiar traducción derecha (Columna 2)"
+              >
+                <span>{secondaryVerObj?.short_name || 'KJV'}</span>
+              </button>
+
+              <button
+                className="version-split-arrow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPopover('primary');
+                }}
+                title="Abrir biblioteca de traducciones"
+              >
+                <ChevronDown size={11} />
+              </button>
+            </div>
+          )}
 
           <VersionPickerPopover
-            isOpen={isVersionPopoverOpen}
-            onClose={() => setIsVersionPopoverOpen(false)}
+            isOpen={isPopoverOpen}
+            onClose={handleClosePopover}
             versions={versions}
+            targetColumn={popoverTarget}
             currentVersion={currentVersion}
             onSelectVersion={onSelectVersion}
             parallelMode={parallelMode}
@@ -169,6 +242,8 @@ export const Header: React.FC<HeaderProps> = ({
             onChangeLineHeight={onChangeLineHeight}
             maxWidthPreset={maxWidthPreset}
             onChangeMaxWidth={onChangeMaxWidth}
+            theme={theme}
+            onSelectTheme={onSelectTheme}
           />
         </div>
 

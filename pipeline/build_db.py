@@ -647,6 +647,27 @@ def main():
     # 4. World English Bible (Dominio Público)
     load_json_bible(conn, "web", "World English Bible", "WEB", "en", "Dominio Público", 4, RAW_DIR / "web.json")
 
+    # 5. Sagradas Escrituras 1569 (Dominio Público)
+    load_json_bible(conn, "sse", "Sagradas Escrituras (1569)", "SSE", "es", "Dominio Público", 5, RAW_DIR / "sse.json")
+
+    # 6. American Standard Version 1901 (Dominio Público)
+    load_json_bible(conn, "asv", "American Standard Version (1901)", "ASV", "en", "Dominio Público", 6, RAW_DIR / "asv.json")
+
+    # 7. Douay-Rheims 1899 (Dominio Público)
+    load_json_bible(conn, "douayrheims", "Douay-Rheims (1899)", "DRA", "en", "Dominio Público", 7, RAW_DIR / "douayrheims.json")
+
+    # 8. Louis Segond 1910 (Dominio Público)
+    load_json_bible(conn, "ls1910", "Louis Segond (1910)", "LSG", "fr", "Dominio Público", 8, RAW_DIR / "ls1910.json")
+
+    # 9. Elberfelder 1905 (Dominio Público)
+    load_json_bible(conn, "elberfelder1905", "Elberfelder (1905)", "ELB", "de", "Dominio Público", 9, RAW_DIR / "elberfelder1905.json")
+
+    # 10. Bíblia Livre (CC BY-SA 4.0)
+    load_json_bible(conn, "livre", "Bíblia Livre", "BLL", "pt", "CC BY-SA 4.0", 10, RAW_DIR / "livre.json")
+
+    # 11. Vulgata Clementina (Dominio Público)
+    load_json_bible(conn, "vulgate", "Vulgata Clementina", "VUL", "la", "Dominio Público", 11, RAW_DIR / "vulgate.json")
+
     # Build FTS5
     populate_fts(conn)
 

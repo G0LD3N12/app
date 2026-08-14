@@ -1,9 +1,29 @@
-import React, { useState } from 'react';
-import { AppTheme, BibleVersion } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AppTheme, BibleVersion, AIProviderConfig, AIConnectionStatus, OllamaModelInstallStatus } from '../types';
 import { THEME_PALETTES } from '../themeDefinitions';
 import { VerbumLogo } from './VerbumLogo';
-import { setWindowDecorations } from '../services/bibleService';
-import { Palette, BookOpen, Database, Search, ShieldCheck, Check, Cpu, LayoutTemplate } from 'lucide-react';
+import {
+  setWindowDecorations,
+  testAIConnection,
+  checkOllamaModelStatus,
+  installOrPullOllamaModel,
+} from '../services/bibleService';
+import {
+  Palette,
+  BookOpen,
+  Database,
+  Check,
+  Cpu,
+  Sparkles,
+  Loader2,
+  Wifi,
+  DownloadCloud,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Search,
+  Type,
+} from 'lucide-react';
 
 interface SettingsViewProps {
   theme: AppTheme;
@@ -15,6 +35,10 @@ interface SettingsViewProps {
   onSelectDefaultVersion: (vId: string) => void;
   hideTopBar: boolean;
   onToggleHideTopBar: () => void;
+  aiConfig: AIProviderConfig;
+  onUpdateAIConfig: (cfg: AIProviderConfig) => void;
+  searchLanguages: string[];
+  onChangeSearchLanguages: (langs: string[]) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -25,11 +49,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   versions,
   currentVersion,
   onSelectDefaultVersion,
+  aiConfig,
+  onUpdateAIConfig,
+  searchLanguages,
+  onChangeSearchLanguages,
 }) => {
   const [themeFilter, setThemeFilter] = useState<'all' | 'dark' | 'light'>('all');
   const [nativeDecorations, setNativeDecorations] = useState<boolean>(() => {
     return localStorage.getItem('verbum_native_decorations') === 'true';
   });
+  const [testingAI, setTestingAI] = useState<boolean>(false);
+  const [testStatus, setTestStatus] = useState<AIConnectionStatus | null>(null);
+
+  // Ollama local installer state
+  const [ollamaStatus, setOllamaStatus] = useState<OllamaModelInstallStatus | null>(null);
+  const [isInstallingOllama, setIsInstallingOllama] = useState<boolean>(false);
+  const [ollamaError, setOllamaError] = useState<string | null>(null);
 
   const activeNormalized = theme === 'dark' ? 'obsidian' : theme === 'light' ? 'white' : theme;
   const filteredThemes = THEME_PALETTES.filter(
@@ -47,83 +82,456 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  const handleTestConnection = async () => {
+    setTestingAI(true);
+    setTestStatus(null);
+    try {
+      const status = await testAIConnection(aiConfig);
+      setTestStatus(status);
+    } catch (err: any) {
+      setTestStatus({
+        is_connected: false,
+        provider_type: aiConfig.provider_type,
+        model_name: aiConfig.model_name,
+        message: `Error de conexión: ${err?.message || err}`,
+      });
+    } finally {
+      setTestingAI(false);
+    }
+  };
+
+  const refreshOllamaStatus = useCallback(async () => {
+    try {
+      const model = aiConfig.model_name || 'qwen3:4b-instruct-2507';
+      const status = await checkOllamaModelStatus(aiConfig.ollama_endpoint, model);
+      setOllamaStatus(status);
+    } catch (e) {
+      console.error('Error checking Ollama status:', e);
+    }
+  }, [aiConfig.ollama_endpoint, aiConfig.model_name]);
+
+  useEffect(() => {
+    if (aiConfig.provider_type === 'ollama') {
+      refreshOllamaStatus();
+    }
+  }, [aiConfig.provider_type, refreshOllamaStatus]);
+
+  const handleInstallOllamaModel = async () => {
+    setIsInstallingOllama(true);
+    setOllamaError(null);
+    try {
+      const targetModel = aiConfig.model_name || 'qwen3:4b-instruct-2507';
+      const res = await installOrPullOllamaModel(aiConfig.ollama_endpoint, targetModel);
+      setOllamaStatus(res);
+      if (res.is_model_installed) {
+        setTestStatus({
+          is_connected: true,
+          provider_type: 'ollama',
+          model_name: res.model_name,
+          message: `✓ Modelo «${res.model_name}» instalado y listo para trabajar localmente.`,
+          latency_ms: 0,
+        });
+      }
+    } catch (err: any) {
+      setOllamaError(String(err?.message || err));
+    } finally {
+      setIsInstallingOllama(false);
+    }
+  };
+
   return (
     <div className="settings-viewport">
       <div className="settings-content-wrapper">
         {/* Header */}
         <div className="settings-header">
           <h1 className="settings-title">Configuración</h1>
-          <p className="settings-subtitle">Personaliza la lectura, temas cromáticos nativos, aceleración gráfica y versiones offline</p>
+          <p className="settings-subtitle">Preferencias de lectura, personalización visual y motores de estudio</p>
         </div>
 
         {/* 1. Rendimiento y Ventana */}
         <section className="settings-section">
           <div className="settings-section-header">
-            <Cpu size={19} color="var(--accent-gold)" />
-            <h2>Rendimiento y Ventana</h2>
+            <Cpu size={18} color="var(--accent-gold)" />
+            <h2>Rendimiento & Ventana</h2>
           </div>
 
-          <div className="settings-card">
+          <div className="settings-group">
             {/* Native Titlebar toggle */}
             <div className="settings-row">
               <div className="settings-label-col">
-                <span className="settings-row-title">Barra de Título Nativa del Sistema (GTK)</span>
+                <span className="settings-row-title">Barra de Título del Sistema (GTK)</span>
                 <span className="settings-row-desc">
                   {nativeDecorations
-                    ? 'La barra nativa del sistema operativo está visible arriba.'
-                    : 'Modo Integrado Elegante (Barra nativa GTK oculta por defecto, controles integrados en la cabecera).'}
+                    ? 'Barra nativa del sistema visible.'
+                    : 'Diseño inmersivo integrado (barra de título nativa oculta).'}
                 </span>
               </div>
 
               <button
-                className={`btn-select-default ${nativeDecorations ? 'active' : ''}`}
+                type="button"
+                className={`verbum-switch ${!nativeDecorations ? 'active' : ''}`}
                 onClick={handleToggleDecorations}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                title={nativeDecorations ? 'Ocultar barra nativa de Linux' : 'Mostrar barra nativa de Linux'}
+                aria-label="Alternar barra de título nativa"
               >
-                <LayoutTemplate size={15} />
-                <span>{nativeDecorations ? 'Ocultar Barra GTK' : 'Mostrar Barra GTK'}</span>
+                <div className="verbum-switch-knob" />
               </button>
             </div>
 
-            {/* Hardware acceleration info */}
+            {/* GPU Acceleration note */}
             <div className="settings-row">
               <div className="settings-label-col">
-                <span className="settings-row-title">Aceleración por Hardware y GPU</span>
+                <span className="settings-row-title">Aceleración por Hardware</span>
                 <span className="settings-row-desc">
-                  WebKitGTK Compositing / OpenGL activo con virtualización CSS de versículos (60+ FPS fluidos).
+                  Renderizado WebKitGTK OpenGL/Vulkan activo para transiciones fluidas de 60fps.
                 </span>
               </div>
 
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  backgroundColor: 'var(--accent-gold-soft)',
-                  color: 'var(--accent-gold)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                }}
-              >
-                <Check size={13} /> Activa por Hardware
-              </span>
+              <div className="live-status-pill">
+                <div className="live-status-dot" />
+                <span>60 FPS · GPU Activa</span>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* 2. Galería de Temas Cromáticos */}
+        {/* 2. Inteligencia & Modelos de IA */}
         <section className="settings-section">
           <div className="settings-section-header">
-            <Palette size={19} color="var(--accent-gold)" />
-            <h2>Temas y Paletas Cromáticas (100% Nativos)</h2>
+            <Sparkles size={18} color="var(--accent-gold)" />
+            <h2>Inteligencia & Exégesis («Profundizar con IA»)</h2>
           </div>
 
-          <div className="settings-card" style={{ gap: '18px' }}>
+          <div className="settings-group" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Provider Selector Grid */}
+            <div className="ai-provider-grid">
+              <button
+                className={`ai-provider-btn ${aiConfig.provider_type === 'gemini' ? 'active' : ''}`}
+                onClick={() =>
+                  onUpdateAIConfig({
+                    ...aiConfig,
+                    provider_type: 'gemini',
+                    model_name: 'gemini-3.7-flash',
+                  })
+                }
+              >
+                <Sparkles size={16} />
+                <span>Google AI Studio</span>
+              </button>
+
+              <button
+                className={`ai-provider-btn ${aiConfig.provider_type === 'ollama' ? 'active' : ''}`}
+                onClick={() =>
+                  onUpdateAIConfig({
+                    ...aiConfig,
+                    provider_type: 'ollama',
+                    model_name: 'qwen3:4b-instruct-2507',
+                  })
+                }
+              >
+                <Cpu size={16} />
+                <span>Ollama Local</span>
+              </button>
+
+              <button
+                className={`ai-provider-btn ${aiConfig.provider_type === 'openai_compatible' ? 'active' : ''}`}
+                onClick={() =>
+                  onUpdateAIConfig({
+                    ...aiConfig,
+                    provider_type: 'openai_compatible',
+                    model_name: 'qwen/qwen-2.5-7b-instruct',
+                  })
+                }
+              >
+                <Wifi size={16} />
+                <span>OpenRouter / OpenAI</span>
+              </button>
+
+              <button
+                className={`ai-provider-btn ${aiConfig.provider_type === 'heuristic_offline' ? 'active' : ''}`}
+                onClick={() => onUpdateAIConfig({ ...aiConfig, provider_type: 'heuristic_offline' })}
+              >
+                <Database size={16} />
+                <span>Modo Offline</span>
+              </button>
+            </div>
+
+            {/* Google AI Studio (Gemini) Panel */}
+            {aiConfig.provider_type === 'gemini' && (
+              <div className="ai-config-subpanel">
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label className="settings-input-label">API Key de Google AI Studio</label>
+                    <input
+                      type="password"
+                      className="settings-text-input"
+                      value={aiConfig.api_key || ''}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, api_key: e.target.value })}
+                      placeholder="AIzaSy..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="settings-input-label">Modelo Gemini</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={aiConfig.model_name}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
+                      placeholder="gemini-3.7-flash, gemini-3.7-pro"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ollama Local Panel with 1-Click Installer */}
+            {aiConfig.provider_type === 'ollama' && (
+              <div className="ai-config-subpanel">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '14px' }}>
+                  <div>
+                    <label className="settings-input-label">Endpoint de Ollama</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={aiConfig.ollama_endpoint}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, ollama_endpoint: e.target.value })}
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="settings-input-label">Modelo Local</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={aiConfig.model_name}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
+                      placeholder="qwen3:4b-instruct-2507, qwen2.5:3b"
+                    />
+                  </div>
+                </div>
+
+                {/* Intelligent Local Model Status & 1-Click Installer */}
+                <div className="ai-install-box">
+                  <div className="ai-install-info">
+                    {ollamaStatus?.is_model_installed ? (
+                      <>
+                        <span className="ai-badge-status ready">
+                          <CheckCircle2 size={12} /> Listo
+                        </span>
+                        <span>Modelo local <strong>Qwen3-4B</strong> instalado y listo para trabajar.</span>
+                      </>
+                    ) : isInstallingOllama ? (
+                      <>
+                        <Loader2 size={15} className="spin-anim" color="var(--accent-gold)" />
+                        <span>Instalando modelo <strong>Qwen3-4B-Instruct</strong> desde Ollama...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="ai-badge-status missing">
+                          <AlertCircle size={12} /> No Instalado
+                        </span>
+                        <span>Descarga el modelo <strong>Qwen3-4B-Instruct-2507</strong> para procesar sin internet.</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {!ollamaStatus?.is_model_installed && (
+                      <button
+                        className="btn-install-model"
+                        onClick={handleInstallOllamaModel}
+                        disabled={isInstallingOllama}
+                      >
+                        {isInstallingOllama ? (
+                          <>
+                            <Loader2 size={13} className="spin-anim" />
+                            <span>Descargando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <DownloadCloud size={14} />
+                            <span>Instalar Qwen3-4B</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      className="icon-btn"
+                      onClick={refreshOllamaStatus}
+                      title="Verificar estado de Ollama"
+                      style={{ padding: '6px', borderRadius: '6px' }}
+                    >
+                      <RefreshCw size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {ollamaError && (
+                  <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#ef4444' }}>
+                    {ollamaError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cloud API Panel */}
+            {aiConfig.provider_type === 'openai_compatible' && (
+              <div className="ai-config-subpanel">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label className="settings-input-label">Base URL</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={aiConfig.base_url || ''}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, base_url: e.target.value })}
+                      placeholder="https://openrouter.ai/api/v1"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="settings-input-label">Modelo</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={aiConfig.model_name}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
+                      placeholder="qwen/qwen-2.5-7b-instruct"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="settings-input-label">API Key</label>
+                    <input
+                      type="password"
+                      className="settings-text-input"
+                      value={aiConfig.api_key || ''}
+                      onChange={(e) => onUpdateAIConfig({ ...aiConfig, api_key: e.target.value })}
+                      placeholder="sk-..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Connection Test & Privacy Row */}
+            <div className="settings-row" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', paddingLeft: 0, paddingRight: 0 }}>
+              <div className="settings-label-col">
+                <span className="settings-row-title">Verificación de Conexión</span>
+                <span className="settings-row-desc">Comprueba la disponibilidad del motor activo.</span>
+              </div>
+
+              <button
+                className="btn-select-default"
+                onClick={handleTestConnection}
+                disabled={testingAI}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {testingAI ? <Loader2 size={13} className="spin-anim" /> : <Sparkles size={13} />}
+                <span>{testingAI ? 'Comprobando...' : 'Probar Conexión'}</span>
+              </button>
+            </div>
+
+            {testStatus && (
+              <div
+                className={`ai-test-status-banner ${testStatus.is_connected ? 'success' : 'error'}`}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: testStatus.is_connected ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  border: `1px solid ${testStatus.is_connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                  color: testStatus.is_connected ? '#22c55e' : '#ef4444',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span>{testStatus.message}</span>
+                {testStatus.latency_ms !== undefined && (
+                  <span style={{ fontSize: '0.78rem', opacity: 0.85 }}>Latencia: {testStatus.latency_ms} ms</span>
+                )}
+              </div>
+            )}
+
+            {/* Privacy Row with Switch */}
+            <div className="settings-row" style={{ paddingLeft: 0, paddingRight: 0, borderBottom: 'none' }}>
+              <div className="settings-label-col">
+                <span className="settings-row-title">Privacidad Estricta (Local-Only)</span>
+                <span className="settings-row-desc">Bloquear cualquier consulta hacia servidores externos.</span>
+              </div>
+
+              <button
+                type="button"
+                className={`verbum-switch ${aiConfig.local_only_privacy ? 'active' : ''}`}
+                onClick={() =>
+                  onUpdateAIConfig({ ...aiConfig, local_only_privacy: !aiConfig.local_only_privacy })
+                }
+                title={aiConfig.local_only_privacy ? 'Privacidad local activa' : 'Permitir conexiones en la nube'}
+                aria-label="Alternar privacidad estricta"
+              >
+                <div className="verbum-switch-knob" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. Tipografía y Lectura */}
+        <section className="settings-section">
+          <div className="settings-section-header">
+            <Type size={18} color="var(--accent-gold)" />
+            <h2>Tipografía & Lectura</h2>
+          </div>
+
+          <div className="settings-group">
+            {/* Font Size Row */}
+            <div className="settings-row">
+              <div className="settings-label-col">
+                <span className="settings-row-title">Tamaño de Fuente del Texto Bíblico</span>
+                <span className="settings-row-desc">Ajusta el cuerpo editorial para una lectura óptima</span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input
+                  type="range"
+                  min="13"
+                  max="28"
+                  value={fontSize}
+                  onChange={(e) => onChangeFontSize(Number(e.target.value))}
+                  style={{ width: '130px', accentColor: 'var(--accent-gold)', cursor: 'pointer' }}
+                />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.88rem', color: 'var(--accent-gold)', fontWeight: 'bold', minWidth: '40px' }}>
+                  {fontSize}px
+                </span>
+              </div>
+            </div>
+
+            {/* Editorial Preview Box */}
+            <div style={{ padding: '16px 18px' }}>
+              <div className="typography-preview-box" style={{ margin: 0 }}>
+                <span className="preview-label">Vista Previa Editorial</span>
+                <p style={{ fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: '1.7', color: 'var(--text-primary)', margin: 0 }}>
+                  «En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios. Este era en el principio con Dios.»
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Temas y Paletas Cromáticas */}
+        <section className="settings-section">
+          <div className="settings-section-header">
+            <Palette size={18} color="var(--accent-gold)" />
+            <h2>Temas Cromáticos ({THEME_PALETTES.length} Paletas Nativas)</h2>
+          </div>
+
+          <div className="settings-group" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <span className="settings-row-desc">
-                Colores puros oficiales (OLED Pitch Black sin amarillo, Tokyo Night azul tormenta, Catppuccin, Vercel, Nord, etc.)
+                Paletas adaptadas para alto contraste, modo OLED y lectura prolongada sin fatiga.
               </span>
 
               {/* Theme filter pills */}
@@ -140,20 +548,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onClick={() => setThemeFilter('dark')}
                   style={{ padding: '4px 10px', fontSize: '0.78rem' }}
                 >
-                  Oscuros
+                  Oscuros ({THEME_PALETTES.filter((t) => t.category === 'dark').length})
                 </button>
                 <button
                   className={`catalog-filter-btn ${themeFilter === 'light' ? 'active' : ''}`}
                   onClick={() => setThemeFilter('light')}
                   style={{ padding: '4px 10px', fontSize: '0.78rem' }}
                 >
-                  Claros
+                  Claros ({THEME_PALETTES.filter((t) => t.category === 'light').length})
                 </button>
               </div>
             </div>
 
             {/* Grid of Themes */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
               {filteredThemes.map((t) => {
                 const isCurrent = activeNormalized === t.id;
 
@@ -161,7 +569,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div
                     key={t.id}
                     className={`theme-card-preview ${isCurrent ? 'active-theme' : ''}`}
-                    onClick={() => onSelectTheme(t.id)}
+                    onClick={() => onSelectTheme(t.id as AppTheme)}
                     style={{
                       backgroundColor: t.surfacePreview,
                       borderColor: isCurrent ? t.accentPreview : 'var(--border-subtle)',
@@ -172,14 +580,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span
                           style={{
-                            width: '12px',
-                            height: '12px',
+                            width: '10px',
+                            height: '10px',
                             borderRadius: '50%',
                             backgroundColor: t.accentPreview,
                             boxShadow: `0 0 8px ${t.accentPreview}`,
                           }}
                         />
-                        <h3 style={{ fontSize: '0.96rem', fontWeight: '700', color: t.textPreview }}>
+                        <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: t.textPreview, margin: 0 }}>
                           {t.name}
                         </h3>
                       </div>
@@ -207,45 +615,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       )}
                     </div>
 
-                    <p style={{ fontSize: '0.8rem', color: t.textPreview, opacity: 0.82, lineHeight: '1.4', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '0.76rem', color: t.textPreview, opacity: 0.82, lineHeight: '1.4', margin: '0 0 10px 0' }}>
                       {t.description}
                     </p>
 
                     {/* Color Swatches */}
-                    <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
                       <div
-                        title={`Fondo: ${t.bgPreview}`}
-                        style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: t.bgPreview, border: '1px solid rgba(255,255,255,0.1)' }}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '4px',
+                          backgroundColor: t.bgPreview,
+                          border: '1px solid rgba(255,255,255,0.1)',
+                        }}
+                        title="Fondo de Aplicación"
                       />
                       <div
-                        title={`Superficie: ${t.surfacePreview}`}
-                        style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: t.surfacePreview, border: '1px solid rgba(255,255,255,0.1)' }}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '4px',
+                          backgroundColor: t.surfacePreview,
+                          border: '1px solid rgba(255,255,255,0.1)',
+                        }}
+                        title="Superficie de Tarjetas"
                       />
                       <div
-                        title={`Acento: ${t.accentPreview}`}
-                        style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: t.accentPreview }}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '4px',
+                          backgroundColor: t.accentPreview,
+                        }}
+                        title="Color de Acento"
                       />
                       <div
-                        title={`Texto: ${t.textPreview}`}
-                        style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: t.textPreview }}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '4px',
+                          backgroundColor: t.textPreview,
+                        }}
+                        title="Color del Texto Principal"
                       />
-                    </div>
-
-                    {/* Scripture Preview */}
-                    <div
-                      style={{
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        backgroundColor: t.bgPreview,
-                        border: `1px solid ${isCurrent ? t.accentPreview : 'rgba(255,255,255,0.08)'}`,
-                        fontFamily: 'var(--font-serif)',
-                        fontSize: '0.82rem',
-                        color: t.textPreview,
-                        lineHeight: '1.45',
-                      }}
-                    >
-                      <span style={{ color: t.accentPreview, fontWeight: 'bold', fontSize: '0.72rem', marginRight: '5px' }}>1</span>
-                      «En el principio era el Verbo, y el Verbo era con Dios...»
                     </div>
                   </div>
                 );
@@ -254,64 +667,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </section>
 
-        {/* 3. Tipografía y Legibilidad */}
+        {/* 5. Versiones Bíblicas Offline */}
         <section className="settings-section">
           <div className="settings-section-header">
-            <BookOpen size={19} color="var(--accent-gold)" />
-            <h2>Tipografía y Legibilidad</h2>
-          </div>
-
-          <div className="settings-card">
-            <div className="settings-row">
-              <div className="settings-label-col">
-                <span className="settings-row-title">Tamaño de Texto Bíblico ({fontSize}px)</span>
-                <span className="settings-row-desc">Ajusta el tamaño tipográfico de los versículos</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <input
-                  type="range"
-                  min="15"
-                  max="26"
-                  value={fontSize}
-                  onChange={(e) => onChangeFontSize(parseInt(e.target.value, 10))}
-                  style={{ width: '150px', accentColor: 'var(--accent-gold)', cursor: 'pointer' }}
-                />
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>
-                  {fontSize}px
-                </span>
-              </div>
-            </div>
-
-            <div className="typography-preview-box" style={{ fontSize: `${fontSize}px` }}>
-              <span className="preview-label">Vista Previa Editorial:</span>
-              <p style={{ fontFamily: 'var(--font-serif)', lineHeight: '1.7', color: 'var(--text-primary)' }}>
-                «En el principio era el Verbo, y el Verbo era con Dios, y el Verbo era Dios. Este era en el principio con Dios.»
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. Versiones Bíblicas Offline */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <BookOpen size={19} color="var(--accent-gold)" />
+            <BookOpen size={18} color="var(--accent-gold)" />
             <h2>Versiones Bíblicas Instaladas (100% Offline)</h2>
           </div>
 
-          <div className="settings-card">
+          <div className="settings-group">
             {versions.map((v) => (
-              <div key={v.id} className="version-setting-row">
+              <div key={v.id} className="settings-row">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                    <span style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>
                       {v.name} ({v.short_name})
                     </span>
                     <span className="version-lang-pill">{v.language.toUpperCase()}</span>
-                    {currentVersion === v.id && <span className="default-version-badge">Activa por defecto</span>}
+                    {currentVersion === v.id && <span className="default-version-badge">Predeterminada</span>}
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Licencia: {v.license} • Empaquetado localmente en SQLite
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Licencia: {v.license} · Empaquetado localmente en SQLite
                   </span>
                 </div>
 
@@ -319,25 +694,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`btn-select-default ${currentVersion === v.id ? 'active' : ''}`}
                   onClick={() => onSelectDefaultVersion(v.id)}
                 >
-                  {currentVersion === v.id ? 'Seleccionada' : 'Establecer por defecto'}
+                  {currentVersion === v.id ? 'Seleccionada ✓' : 'Usar por defecto'}
                 </button>
               </div>
             ))}
           </div>
         </section>
 
-        {/* 5. Motor de Búsqueda FTS5 & Lematización */}
+        {/* 6. Motor de Búsqueda FTS5 & Lematización */}
         <section className="settings-section">
           <div className="settings-section-header">
-            <Search size={19} color="var(--accent-gold)" />
+            <Search size={18} color="var(--accent-gold)" />
             <h2>Motor de Búsqueda SQLite FTS5</h2>
           </div>
 
-          <div className="settings-card">
+          <div className="settings-group" style={{ padding: '14px' }}>
             <div className="stats-grid">
               <div className="stat-box">
                 <span className="stat-num">120,962</span>
-                <span className="stat-desc">Versículos indexados en el equipo</span>
+                <span className="stat-desc">Versículos indexados localmente</span>
               </div>
 
               <div className="stat-box">
@@ -346,72 +721,71 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               <div className="stat-box">
-                <span className="stat-num">remove_diacritics 2</span>
-                <span className="stat-desc">Búsqueda insensible a tildes (ej. jose → José)</span>
+                <span className="stat-num">remove_diacritics</span>
+                <span className="stat-desc">Búsqueda insensible a tildes (jose → José)</span>
               </div>
 
               <div className="stat-box">
-                <span className="stat-num">Lematización Activa</span>
-                <span className="stat-desc">Expansión de variantes (anaquitas ⇄ anaceos ⇄ anakim)</span>
+                <span className="stat-num">Lematización</span>
+                <span className="stat-desc">Expansión canónica (anaquitas ⇄ anaceos ⇄ anakim)</span>
               </div>
+            </div>
+
+            <div style={{ marginTop: '18px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  Idiomas incluidos en la búsqueda
+                </span>
+                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                  {searchLanguages.length === 0 ? 'Todos los idiomas' : `${searchLanguages.length} seleccionado(s)`}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                <button
+                  className={`btn-select-default ${searchLanguages.length === 0 ? 'active' : ''}`}
+                  onClick={() => onChangeSearchLanguages([])}
+                >
+                  Todos
+                </button>
+                {Array.from(new Set(versions.map((v) => v.language))).map((lang) => {
+                  const label: Record<string, string> = {
+                    es: 'Español',
+                    en: 'English',
+                    fr: 'Français',
+                    de: 'Deutsch',
+                    pt: 'Português',
+                    la: 'Latín',
+                  };
+                  const active = searchLanguages.includes(lang);
+                  return (
+                    <button
+                      key={lang}
+                      className={`btn-select-default ${active ? 'active' : ''}`}
+                      onClick={() => {
+                        if (active) {
+                          onChangeSearchLanguages(searchLanguages.filter((l) => l !== lang));
+                        } else {
+                          onChangeSearchLanguages([...searchLanguages, lang]);
+                        }
+                      }}
+                    >
+                      {label[lang] || lang.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                La búsqueda global (Ctrl+F / Ctrl+K) solo devolverá resultados en los idiomas marcados.
+              </p>
             </div>
           </div>
         </section>
 
-        {/* 6. Sistema y Almacenamiento */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <Database size={19} color="var(--accent-gold)" />
-            <h2>Almacenamiento Local</h2>
-          </div>
-
-          <div className="settings-card">
-            <div className="settings-row">
-              <div className="settings-label-col">
-                <span className="settings-row-title">Base de Datos Central (`bible.db`)</span>
-                <span className="settings-row-desc">Contiene textos canónicos, índice FTS5, lemas y conceptos</span>
-              </div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                ~29.7 MB (Local)
-              </span>
-            </div>
-
-            <div className="settings-row">
-              <div className="settings-label-col">
-                <span className="settings-row-title">Galería de Imágenes de Estudio</span>
-                <span className="settings-row-desc">Artefactos arqueológicos y manuscritos de dominio público</span>
-              </div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                WebP / SVG Vectorial
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* 7. Acerca de Verbum */}
-        <section className="settings-section" style={{ marginBottom: '40px' }}>
-          <div className="settings-section-header">
-            <ShieldCheck size={19} color="var(--accent-gold)" />
-            <h2>Acerca de Verbum</h2>
-          </div>
-
-          <div className="settings-card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div className="app-brand-logo-container">
-                <VerbumLogo size={26} />
-              </div>
-              <div>
-                <h3 style={{ fontFamily: 'var(--font-title-luxury)', fontSize: '1.2rem', color: 'var(--accent-gold)' }}>
-                  VERBUM DESKTOP
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Versión 1.0.0 (Rust 1.97 + Tauri v2)</span>
-              </div>
-            </div>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-              Software bíblico 100% offline para lectura profunda, búsqueda de alto rendimiento e investigación arqueológica e intertextual. Cero telemetría, cero conexión a internet en tiempo de ejecución.
-            </p>
-          </div>
-        </section>
+        {/* Footer Branding */}
+        <div className="settings-footer-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '24px 0 10px 0', opacity: 0.75, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          <VerbumLogo size={20} className="brand-icon" />
+          <span>Verbum Desktop · Estudio Bíblico de Alta Fidelidad</span>
+        </div>
       </div>
     </div>
   );
