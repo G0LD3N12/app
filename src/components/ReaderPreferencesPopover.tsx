@@ -35,11 +35,11 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
 
   const isDark = theme ? theme !== 'white' && theme !== 'sepia' && theme !== 'light' : true;
 
-  const fontOptions: Array<{ id: ScriptureFont; name: string }> = [
-    { id: 'literata', name: 'Literata' },
-    { id: 'crimson', name: 'Crimson' },
-    { id: 'garamond', name: 'Cormorant' },
-    { id: 'sans', name: 'Sans' },
+  const fontOptions: Array<{ id: ScriptureFont; name: string; fontVar: string }> = [
+    { id: 'literata', name: 'Literata', fontVar: 'var(--font-serif)' },
+    { id: 'crimson', name: 'Crimson', fontVar: 'var(--font-crimson)' },
+    { id: 'garamond', name: 'Cormorant', fontVar: 'var(--font-garamond)' },
+    { id: 'sans', name: 'Sans', fontVar: 'var(--font-sans)' },
   ];
 
   const handleSetTheme = (mode: 'dark' | 'light') => {
@@ -87,18 +87,20 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
 
         <div className="reader-pref-divider" />
 
-        {/* 1. Tipografía Bíblica */}
+        {/* 1. Tipografía */}
         <div className="reader-pref-section">
           <div className="reader-pref-label-row">
             <Type size={13} />
-            <span>Tipografía bíblica</span>
+            <span>Tipografía</span>
           </div>
           <div className="reader-pref-font-row">
             {fontOptions.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
-                className={`reader-pref-btn ${fontFamily === opt.id ? 'active' : ''}`}
+                data-font={opt.id}
+                style={{ fontFamily: opt.fontVar }}
+                className={`reader-pref-btn reader-pref-font-btn ${fontFamily === opt.id ? 'active' : ''}`}
                 onClick={() => onChangeFontFamily(opt.id)}
               >
                 {opt.name}
@@ -146,24 +148,39 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
             <div className="reader-pref-btn-stack">
               <button
                 type="button"
-                className={`reader-pref-btn ${lineHeightPreset === 'compact' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${lineHeightPreset === 'compact' ? 'active' : ''}`}
                 onClick={() => onChangeLineHeight('compact')}
               >
-                Compacto
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="2" y1="5.2" x2="14" y2="5.2" />
+                  <line x1="2" y1="8" x2="11" y2="8" />
+                  <line x1="2" y1="10.8" x2="13" y2="10.8" />
+                </svg>
+                <span>Compacto</span>
               </button>
               <button
                 type="button"
-                className={`reader-pref-btn ${lineHeightPreset === 'comfortable' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${lineHeightPreset === 'comfortable' ? 'active' : ''}`}
                 onClick={() => onChangeLineHeight('comfortable')}
               >
-                Cómodo
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                  <line x1="2" y1="8" x2="11" y2="8" />
+                  <line x1="2" y1="12.5" x2="13" y2="12.5" />
+                </svg>
+                <span>Cómodo</span>
               </button>
               <button
                 type="button"
-                className={`reader-pref-btn ${lineHeightPreset === 'spacious' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${lineHeightPreset === 'spacious' ? 'active' : ''}`}
                 onClick={() => onChangeLineHeight('spacious')}
               >
-                Espacioso
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="2" y1="1.8" x2="14" y2="1.8" />
+                  <line x1="2" y1="8" x2="11" y2="8" />
+                  <line x1="2" y1="14.2" x2="13" y2="14.2" />
+                </svg>
+                <span>Espacioso</span>
               </button>
             </div>
           </div>
@@ -177,24 +194,39 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
             <div className="reader-pref-btn-stack">
               <button
                 type="button"
-                className={`reader-pref-btn ${maxWidthPreset === 'standard' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${maxWidthPreset === 'standard' ? 'active' : ''}`}
                 onClick={() => onChangeMaxWidth('standard')}
               >
-                Estándar
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="4.5" y1="3" x2="4.5" y2="13" strokeOpacity="0.4" />
+                  <line x1="11.5" y1="3" x2="11.5" y2="13" strokeOpacity="0.4" />
+                  <line x1="5.5" y1="8" x2="10.5" y2="8" />
+                </svg>
+                <span>Estándar</span>
               </button>
               <button
                 type="button"
-                className={`reader-pref-btn ${maxWidthPreset === 'wide' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${maxWidthPreset === 'wide' ? 'active' : ''}`}
                 onClick={() => onChangeMaxWidth('wide')}
               >
-                Amplio
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="2.5" y1="3" x2="2.5" y2="13" strokeOpacity="0.4" />
+                  <line x1="13.5" y1="3" x2="13.5" y2="13" strokeOpacity="0.4" />
+                  <line x1="3.5" y1="8" x2="12.5" y2="8" />
+                </svg>
+                <span>Amplio</span>
               </button>
               <button
                 type="button"
-                className={`reader-pref-btn ${maxWidthPreset === 'expanded' ? 'active' : ''}`}
+                className={`reader-pref-btn reader-pref-option-btn ${maxWidthPreset === 'expanded' ? 'active' : ''}`}
                 onClick={() => onChangeMaxWidth('expanded')}
               >
-                Completo
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="reader-pref-option-icon">
+                  <line x1="1" y1="3" x2="1" y2="13" strokeOpacity="0.4" />
+                  <line x1="15" y1="3" x2="15" y2="13" strokeOpacity="0.4" />
+                  <line x1="2" y1="8" x2="14" y2="8" />
+                </svg>
+                <span>Completo</span>
               </button>
             </div>
           </div>

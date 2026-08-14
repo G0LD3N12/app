@@ -2591,6 +2591,50 @@ body,
   gap: 6px;
 }
 
+/* Typography Font Preview Buttons */
+.reader-pref-font-btn {
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  padding: 8px 4px;
+}
+
+.reader-pref-font-btn[data-font="literata"] {
+  font-size: 0.82rem;
+}
+
+.reader-pref-font-btn[data-font="crimson"] {
+  font-size: 0.85rem;
+}
+
+.reader-pref-font-btn[data-font="garamond"] {
+  font-size: 0.88rem;
+}
+
+.reader-pref-font-btn[data-font="sans"] {
+  font-size: 0.78rem;
+}
+
+/* Option Buttons (Interlineado & Ancho with subtle previews) */
+.reader-pref-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+}
+
+.reader-pref-option-icon {
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.reader-pref-btn:hover .reader-pref-option-icon,
+.reader-pref-btn.active .reader-pref-option-icon {
+  opacity: 1;
+}
+
 /* =========================================================================
    9. SETTINGS & STUDY VIEWS
    ========================================================================= */
