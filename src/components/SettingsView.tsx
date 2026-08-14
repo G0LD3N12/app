@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AppTheme, BibleVersion, AIProviderConfig, AIConnectionStatus, OllamaModelInstallStatus } from '../types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { AppTheme, BibleVersion, AIProviderConfig, AIConnectionStatus, OllamaModelInstallStatus, ThemeDefinition } from '../types';
 import { THEME_PALETTES } from '../themeDefinitions';
 import { VerbumLogo } from './VerbumLogo';
 import {
@@ -41,6 +41,145 @@ interface SettingsViewProps {
   onChangeSearchLanguages: (langs: string[]) => void;
 }
 
+// Highly optimized Memoized Theme Card
+const ThemeCard = React.memo<{
+  palette: ThemeDefinition;
+  isActive: boolean;
+  onSelect: (id: AppTheme) => void;
+}>(({ palette: t, isActive, onSelect }) => {
+  const handleClick = useCallback(() => {
+    onSelect(t.id as AppTheme);
+  }, [onSelect, t.id]);
+
+  return (
+    <div
+      className={`theme-card-preview ${isActive ? 'active-theme' : ''}`}
+      onClick={handleClick}
+      style={{
+        backgroundColor: t.surfacePreview,
+        borderColor: isActive ? t.accentPreview : 'var(--border-subtle)',
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: t.accentPreview,
+              boxShadow: `0 0 8px ${t.accentPreview}`,
+            }}
+          />
+          <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: t.textPreview, margin: 0 }}>
+            {t.name}
+          </h3>
+        </div>
+
+        {isActive ? (
+          <span
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: '700',
+              padding: '2px 7px',
+              borderRadius: '6px',
+              backgroundColor: t.accentPreview,
+              color: t.bgPreview === '#ffffff' || t.accentPreview === '#ffffff' ? '#000000' : '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}
+          >
+            <Check size={11} /> Activo
+          </span>
+        ) : (
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            {t.category === 'dark' ? 'Oscuro' : 'Claro'}
+          </span>
+        )}
+      </div>
+
+      <p style={{ fontSize: '0.76rem', color: t.textPreview, opacity: 0.82, lineHeight: '1.4', margin: '0 0 10px 0' }}>
+        {t.description}
+      </p>
+
+      {/* Color Swatches */}
+      <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '4px',
+            backgroundColor: t.bgPreview,
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
+          title="Fondo de Aplicación"
+        />
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '4px',
+            backgroundColor: t.surfacePreview,
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
+          title="Superficie de Tarjetas"
+        />
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '4px',
+            backgroundColor: t.accentPreview,
+          }}
+          title="Color de Acento"
+        />
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            borderRadius: '4px',
+            backgroundColor: t.textPreview,
+          }}
+          title="Color del Texto Principal"
+        />
+      </div>
+    </div>
+  );
+});
+
+// Highly optimized Memoized Bible Version Row
+const VersionSettingsRow = React.memo<{
+  version: BibleVersion;
+  isCurrent: boolean;
+  onSelect: (id: string) => void;
+}>(({ version: v, isCurrent, onSelect }) => {
+  return (
+    <div className="settings-row">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+            {v.name} ({v.short_name})
+          </span>
+          <span className="version-lang-pill">{v.language.toUpperCase()}</span>
+          {isCurrent && <span className="default-version-badge">Predeterminada</span>}
+        </div>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Licencia: {v.license} · Empaquetado localmente en SQLite
+        </span>
+      </div>
+
+      <button
+        className={`btn-select-default ${isCurrent ? 'active' : ''}`}
+        onClick={() => onSelect(v.id)}
+      >
+        {isCurrent ? 'Seleccionada ✓' : 'Usar por defecto'}
+      </button>
+    </div>
+  );
+});
+
 export const SettingsView: React.FC<SettingsViewProps> = ({
   theme,
   onSelectTheme,
@@ -67,9 +206,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [ollamaError, setOllamaError] = useState<string | null>(null);
 
   const activeNormalized = theme === 'dark' ? 'obsidian' : theme === 'light' ? 'white' : theme;
-  const filteredThemes = THEME_PALETTES.filter(
-    (t) => themeFilter === 'all' || t.category === themeFilter
-  );
+
+  const filteredThemes = useMemo(() => {
+    return THEME_PALETTES.filter(
+      (t) => themeFilter === 'all' || t.category === themeFilter
+    );
+  }, [themeFilter]);
 
   const handleToggleDecorations = async () => {
     const nextVal = !nativeDecorations;
@@ -560,109 +702,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Grid of Themes */}
+            {/* Grid of Memoized Theme Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
-              {filteredThemes.map((t) => {
-                const isCurrent = activeNormalized === t.id;
-
-                return (
-                  <div
-                    key={t.id}
-                    className={`theme-card-preview ${isCurrent ? 'active-theme' : ''}`}
-                    onClick={() => onSelectTheme(t.id as AppTheme)}
-                    style={{
-                      backgroundColor: t.surfacePreview,
-                      borderColor: isCurrent ? t.accentPreview : 'var(--border-subtle)',
-                    }}
-                  >
-                    {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span
-                          style={{
-                            width: '10px',
-                            height: '10px',
-                            borderRadius: '50%',
-                            backgroundColor: t.accentPreview,
-                            boxShadow: `0 0 8px ${t.accentPreview}`,
-                          }}
-                        />
-                        <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: t.textPreview, margin: 0 }}>
-                          {t.name}
-                        </h3>
-                      </div>
-
-                      {isCurrent ? (
-                        <span
-                          style={{
-                            fontSize: '0.7rem',
-                            fontWeight: '700',
-                            padding: '2px 7px',
-                            borderRadius: '6px',
-                            backgroundColor: t.accentPreview,
-                            color: t.bgPreview === '#ffffff' || t.accentPreview === '#ffffff' ? '#000000' : '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                          }}
-                        >
-                          <Check size={11} /> Activo
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                          {t.category === 'dark' ? 'Oscuro' : 'Claro'}
-                        </span>
-                      )}
-                    </div>
-
-                    <p style={{ fontSize: '0.76rem', color: t.textPreview, opacity: 0.82, lineHeight: '1.4', margin: '0 0 10px 0' }}>
-                      {t.description}
-                    </p>
-
-                    {/* Color Swatches */}
-                    <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '4px',
-                          backgroundColor: t.bgPreview,
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                        title="Fondo de Aplicación"
-                      />
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '4px',
-                          backgroundColor: t.surfacePreview,
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                        title="Superficie de Tarjetas"
-                      />
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '4px',
-                          backgroundColor: t.accentPreview,
-                        }}
-                        title="Color de Acento"
-                      />
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '4px',
-                          backgroundColor: t.textPreview,
-                        }}
-                        title="Color del Texto Principal"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredThemes.map((t) => (
+                <ThemeCard
+                  key={t.id}
+                  palette={t}
+                  isActive={activeNormalized === t.id}
+                  onSelect={onSelectTheme}
+                />
+              ))}
             </div>
           </div>
         </section>
@@ -676,27 +725,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div className="settings-group">
             {versions.map((v) => (
-              <div key={v.id} className="settings-row">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                      {v.name} ({v.short_name})
-                    </span>
-                    <span className="version-lang-pill">{v.language.toUpperCase()}</span>
-                    {currentVersion === v.id && <span className="default-version-badge">Predeterminada</span>}
-                  </div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Licencia: {v.license} · Empaquetado localmente en SQLite
-                  </span>
-                </div>
-
-                <button
-                  className={`btn-select-default ${currentVersion === v.id ? 'active' : ''}`}
-                  onClick={() => onSelectDefaultVersion(v.id)}
-                >
-                  {currentVersion === v.id ? 'Seleccionada ✓' : 'Usar por defecto'}
-                </button>
-              </div>
+              <VersionSettingsRow
+                key={v.id}
+                version={v}
+                isCurrent={currentVersion === v.id}
+                onSelect={onSelectDefaultVersion}
+              />
             ))}
           </div>
         </section>
@@ -790,3 +824,4 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </div>
   );
 };
+export default SettingsView;
