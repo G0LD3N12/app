@@ -2,7 +2,7 @@
 
 > Software bíblico de alto rendimiento, 100% offline, diseñado para lectura editorial profunda, búsqueda instantánea e investigación arqueológica y tipológica.
 
-![Verbum Desktop Screenshot](public/verbum_logo.png)
+
 
 ---
 
