@@ -16,7 +16,7 @@ interface BookPickerModalProps {
   onClose: () => void;
 }
 
-export const BookPickerModal: React.FC<BookPickerModalProps> = ({
+export const BookPickerModal: React.FC<BookPickerModalProps> = React.memo(({
   isOpen,
   books,
   currentBook,
@@ -233,5 +233,5 @@ export const BookPickerModal: React.FC<BookPickerModalProps> = ({
       </div>
     </div>
   );
-};
+});
 export default BookPickerModal;

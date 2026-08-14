@@ -29,7 +29,7 @@ interface DeepStudyViewProps {
   onNavigateToPassage: (bookName: string, chapter: number, verse: number) => void;
 }
 
-export const DeepStudyView: React.FC<DeepStudyViewProps> = ({
+export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
   initialResult,
   aiRequest,
   aiConfig,
@@ -287,4 +287,4 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = ({
       )}
     </div>
   );
-};
+});

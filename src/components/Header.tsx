@@ -34,7 +34,7 @@ interface HeaderProps {
   onOpenVersionPopover?: (target: 'primary' | 'secondary') => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header: React.FC<HeaderProps> = React.memo(({
   currentBook,
   currentChapter,
   currentVersion,
@@ -262,4 +262,4 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+});

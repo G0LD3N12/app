@@ -28,7 +28,7 @@ interface BibleReaderProps {
   onOpenVersionLibrary?: (target: 'primary' | 'secondary') => void;
 }
 
-export const BibleReader: React.FC<BibleReaderProps> = ({
+export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   currentBook,
   currentChapter,
   versionShortName,
@@ -57,8 +57,9 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
   useEffect(() => {
     if (targetVerseToScroll === null || targetVerseToScroll <= 0) return;
     const timer = window.setTimeout(() => {
+      const smoothJump = targetVerseToScroll > 1;
       document.getElementById(`verse-${targetVerseToScroll}`)?.scrollIntoView({
-        behavior: 'smooth',
+        behavior: smoothJump ? 'smooth' : 'auto',
         block: 'center',
       });
     }, 80);
@@ -259,4 +260,4 @@ export const BibleReader: React.FC<BibleReaderProps> = ({
       </div>
     </div>
   );
-};
+});

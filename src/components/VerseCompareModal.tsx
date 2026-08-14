@@ -12,7 +12,7 @@ interface VerseCompareModalProps {
   versions: BibleVersion[];
 }
 
-export const VerseCompareModal: React.FC<VerseCompareModalProps> = ({
+export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
   isOpen,
   onClose,
   book,
@@ -108,4 +108,4 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = ({
       </div>
     </div>
   );
-};
+});

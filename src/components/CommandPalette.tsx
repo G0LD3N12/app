@@ -73,7 +73,7 @@ function parseScriptureRef(
   return null;
 }
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({
+export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
   isOpen,
   onClose,
   books,
@@ -400,4 +400,4 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       </div>
     </div>
   );
-};
+});

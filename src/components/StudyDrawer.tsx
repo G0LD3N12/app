@@ -30,7 +30,7 @@ interface StudyDrawerProps {
   onNavigateToPassage: (bookName: string, chapter: number, verse: number) => void;
 }
 
-export const StudyDrawer: React.FC<StudyDrawerProps> = ({
+export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
   slug,
   aiRequest,
   aiConfig,
@@ -435,4 +435,4 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = ({
       )}
     </>
   );
-};
+});

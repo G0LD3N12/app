@@ -8,7 +8,7 @@ interface StudyCatalogViewProps {
   onNavigateToPassage: (bookId: number, chapter: number) => void;
 }
 
-export const StudyCatalogView: React.FC<StudyCatalogViewProps> = ({
+export const StudyCatalogView: React.FC<StudyCatalogViewProps> = React.memo(({
   onSelectConcept,
   onNavigateToPassage,
 }) => {
@@ -138,4 +138,4 @@ export const StudyCatalogView: React.FC<StudyCatalogViewProps> = ({
       </div>
     </div>
   );
-};
+});

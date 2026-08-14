@@ -50,7 +50,7 @@ const ObsidianSidebarIcon: React.FC<{ isExpanded: boolean; size?: number }> = ({
   );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar: React.FC<SidebarProps> = React.memo(({
   isExpanded,
   onToggleExpand,
   activeView,
@@ -157,4 +157,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </aside>
   );
-};
+});

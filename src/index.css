@@ -34,15 +34,15 @@
 [data-theme="black"] {
   --bg-app: #000000;
   --bg-surface: #000000;
-  --bg-surface-elevated: #0f0f0f;
+  --bg-surface-elevated: #111111;
   --bg-surface-active: #1e1e1e;
   --bg-overlay: rgba(0, 0, 0, 0.95);
-  --border-subtle: #222222;
-  --border-medium: #333333;
+  --border-subtle: #242424;
+  --border-medium: #383838;
   
   --text-primary: #ffffff;
-  --text-secondary: #a0a0a0;
-  --text-muted: #666666;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
   
   --accent-gold: #ffffff;
   --accent-gold-soft: rgba(255, 255, 255, 0.12);
@@ -969,7 +969,6 @@ input {
   padding: 24px 28px 80px 28px;
   scroll-behavior: smooth;
   transform: translateZ(0);
-  will-change: scroll-position;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1050,7 +1049,7 @@ input {
   padding: 8px 50px 8px 16px;
   border-radius: 6px;
   border-left: 3px solid transparent;
-  transition: all 0.14s ease;
+  transition: background-color 0.14s ease, border-left-color 0.14s ease;
   content-visibility: auto;
   contain-intrinsic-size: 0 42px;
 }
@@ -1259,7 +1258,6 @@ input {
   position: fixed;
   inset: 0;
   background-color: var(--bg-overlay);
-  backdrop-filter: blur(6px);
   z-index: 60;
   display: flex;
   align-items: flex-start;
@@ -1882,13 +1880,13 @@ input {
 }
 
 .library-shelf-lang-title {
-  font-family: var(--font-title), 'Cinzel', serif;
-  font-size: 0.72rem;
+  font-family: var(--font-sans), 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.73rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .library-shelf-count {
@@ -3928,14 +3926,14 @@ body,
 }
 
 .book-picker-group-title {
-  font-family: var(--font-title), 'Cinzel', serif;
-  font-size: 0.72rem;
+  font-family: var(--font-sans), 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.73rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   padding: 8px 10px 4px;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .book-picker-group-items {
