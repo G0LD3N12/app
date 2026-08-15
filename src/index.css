@@ -333,9 +333,9 @@ input {
   height: 48px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 14px;
   z-index: 30;
   flex-shrink: 0;
@@ -353,10 +353,25 @@ input {
   pointer-events: none;
 }
 
-.header-left, .header-center, .header-right {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-start;
+  -webkit-app-region: no-drag;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
   -webkit-app-region: no-drag;
 }
 
@@ -425,13 +440,14 @@ input {
 }
 
 .nav-picker-btn {
-  display: flex;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 0 12px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 0.84rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -446,17 +462,19 @@ input {
 
 /* Command Palette Trigger Capsule (Raycast / Linear / Arc style) */
 .search-trigger-btn {
+  height: 32px;
+  min-width: 320px;
+  max-width: 380px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 14px;
+  padding: 0 12px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  border-radius: 8px;
   color: var(--text-secondary);
   font-size: 0.82rem;
   transition: all 0.16s ease;
-  min-width: 280px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -482,21 +500,23 @@ input {
 
 .kbd-shortcut {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background-color: var(--bg-app);
-  border: 1px solid var(--border-medium);
-  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
   margin-left: auto;
 }
 
 /* Version Dropdown Button */
 .version-dropdown-btn {
-  display: flex;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 11px;
+  padding: 0 10px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -516,8 +536,8 @@ input {
 }
 
 .version-parallel-sep {
-  opacity: 0.6;
-  font-size: 0.75rem;
+  opacity: 0.5;
+  font-size: 0.72rem;
   padding: 0 1px;
 }
 
@@ -526,18 +546,19 @@ input {
 }
 
 .version-dropdown-split-btn {
+  height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-medium);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 2px 4px;
+  padding: 0 4px;
   transition: border-color 0.15s ease;
 }
 
 .version-dropdown-split-btn:hover {
-  border-color: var(--border-focus);
+  border-color: var(--accent-gold);
 }
 
 .version-split-side {
@@ -563,12 +584,12 @@ input {
 }
 
 .version-split-side:hover {
-  background-color: var(--bg-surface-elevated);
+  background-color: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .version-split-arrow {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: transparent;
@@ -585,39 +606,42 @@ input {
 }
 
 .icon-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--text-secondary);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   transition: all 0.15s ease;
 }
 
 .icon-btn:hover {
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-primary);
+  background-color: var(--accent-gold-soft);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
 }
 
 .icon-btn.active-icon-btn {
   background-color: var(--accent-gold-soft);
   color: var(--accent-gold);
-  border: 1px solid var(--accent-gold);
+  border-color: var(--accent-gold);
 }
 
 /* Window Control Buttons */
 .win-controls-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  gap: 3px;
+  margin-left: 4px;
   border-left: 1px solid var(--border-subtle);
   padding-left: 8px;
 }
 
 .win-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
@@ -625,6 +649,7 @@ input {
   border-radius: 6px;
   color: var(--text-secondary);
   transition: all 0.15s ease;
+  background: transparent;
 }
 
 .win-btn:hover {
