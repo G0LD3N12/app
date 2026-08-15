@@ -358,6 +358,13 @@ export function App() {
         return;
       }
 
+      // Toggle sidebar shortcut (Ctrl+B / Cmd+B)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && !isInputActive) {
+        e.preventDefault();
+        setIsSidebarExpanded((prev) => !prev);
+        return;
+      }
+
       // Parallel Mode Shortcut (P)
       if (e.key.toLowerCase() === 'p' && !isInputActive && !e.ctrlKey && !e.metaKey && activeView === 'reader') {
         e.preventDefault();

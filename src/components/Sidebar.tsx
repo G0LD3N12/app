@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelTopClose, PanelTopOpen } from 'lucide-react';
+import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelTopClose, PanelTopOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export type AppView = 'reader' | 'study' | 'settings' | 'deep-study';
 
@@ -12,43 +12,6 @@ interface SidebarProps {
   hideTopBar: boolean;
   onToggleHideTopBar: () => void;
 }
-
-const ObsidianSidebarIcon: React.FC<{ isExpanded: boolean; size?: number }> = ({ isExpanded, size = 19 }) => {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="obsidian-sidebar-icon"
-    >
-      {/* Outer rounded window frame */}
-      <rect
-        x="3"
-        y="3"
-        width="18"
-        height="18"
-        rx="4"
-        className="obsidian-sidebar-frame"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Inner sidebar indicator bar: morphs between thin line and wide solid bar */}
-      <rect
-        x="6"
-        y="6"
-        width={isExpanded ? 4.5 : 1.6}
-        height="12"
-        rx={isExpanded ? 1.5 : 0.8}
-        fill="currentColor"
-        className={`obsidian-sidebar-bar ${isExpanded ? 'expanded' : 'collapsed'}`}
-      />
-    </svg>
-  );
-};
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({
   isExpanded,
@@ -102,12 +65,17 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         <button
           className="sidebar-toggle-btn"
           onClick={onToggleExpand}
-          title={isExpanded ? 'Minimizar barra lateral' : 'Expandir barra lateral'}
+          title={isExpanded ? 'Colapsar barra lateral (Ctrl+B)' : 'Expandir barra lateral (Ctrl+B)'}
         >
-          <div className="sidebar-icon-wrapper">
-            <ObsidianSidebarIcon isExpanded={isExpanded} size={19} />
+          <div className="sidebar-icon-wrapper icon-anim-panel">
+            {isExpanded ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
           </div>
-          {isExpanded && <span className="sidebar-header-title">Navegación</span>}
+          {isExpanded && (
+            <div className="sidebar-label-group">
+              <span className="sidebar-item-label">Colapsar</span>
+              <span className="sidebar-shortcut-tag">Ctrl+B</span>
+            </div>
+          )}
         </button>
       </div>
 
