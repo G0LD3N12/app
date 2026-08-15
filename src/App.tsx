@@ -443,7 +443,6 @@ export function App() {
           onChangeLineHeight={setLineHeightPreset}
           maxWidthPreset={maxWidthPreset}
           onChangeMaxWidth={setMaxWidthPreset}
-          onGoHome={handleGoHome}
           theme={theme}
           onSelectTheme={setTheme}
           isVersionPopoverOpen={isVersionLibraryOpen}
@@ -463,6 +462,7 @@ export function App() {
           onTriggerSearch={() => setIsCommandPaletteOpen(true)}
           hideTopBar={hideTopBar}
           onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
+          onGoHome={handleGoHome}
         />
 
         <main className="app-main-viewport">

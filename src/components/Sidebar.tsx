@@ -11,6 +11,7 @@ interface SidebarProps {
   onTriggerSearch: () => void;
   hideTopBar: boolean;
   onToggleHideTopBar: () => void;
+  onGoHome?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = React.memo(({
@@ -21,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onTriggerSearch,
   hideTopBar,
   onToggleHideTopBar,
+  onGoHome,
 }) => {
   const navItems = [
     {
@@ -60,8 +62,28 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       {/* Zen Mode Edge Hover Sensor */}
       {hideTopBar && <div className="sidebar-zen-sensor" title="Pasar cursor para mostrar barra lateral" />}
 
-      {/* Sidebar Header / Toggle Button */}
+      {/* Sidebar Header / Brand & Toggle Button */}
       <div className="sidebar-top">
+        {isExpanded && (
+          <button
+            className="app-brand"
+            onClick={onGoHome || (() => onSelectView('reader'))}
+            title="Ir a Lectura Principal (Inicio)"
+          >
+            <span className="app-brand-text">
+              {'VERBUM'.split('').map((char, i) => (
+                <span
+                  key={i}
+                  className="app-brand-char"
+                  style={{ '--char-idx': i } as React.CSSProperties}
+                >
+                  {char}
+                </span>
+              ))}
+            </span>
+          </button>
+        )}
+
         <button
           className="sidebar-toggle-btn"
           onClick={onToggleExpand}

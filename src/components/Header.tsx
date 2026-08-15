@@ -25,7 +25,6 @@ interface HeaderProps {
   onChangeLineHeight: (preset: LineHeightPreset) => void;
   maxWidthPreset: MaxWidthPreset;
   onChangeMaxWidth: (preset: MaxWidthPreset) => void;
-  onGoHome: () => void;
   theme?: AppTheme;
   onSelectTheme?: (theme: AppTheme) => void;
   isVersionPopoverOpen?: boolean;
@@ -54,7 +53,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({
   onChangeLineHeight,
   maxWidthPreset,
   onChangeMaxWidth,
-  onGoHome,
   theme,
   onSelectTheme,
   isVersionPopoverOpen: controlledIsOpen,
@@ -100,30 +98,8 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         }
       }}
     >
-      {/* Left Segment: Brand & Passage Pill */}
+      {/* Left Segment: Passage Selector Pill */}
       <div className="header-left no-drag">
-        {/* Brand Home Shortcut */}
-        <button
-          className="app-brand"
-          onClick={onGoHome}
-          title="Ir a Lectura Principal (Inicio)"
-        >
-          <span className="app-brand-text">
-            {'VERBUM'.split('').map((char, i) => (
-              <span
-                key={i}
-                className="app-brand-char"
-                style={{ '--char-idx': i } as React.CSSProperties}
-              >
-                {char}
-              </span>
-            ))}
-          </span>
-        </button>
-
-        <span className="header-subtle-divider" />
-
-        {/* Passage Selector Pill */}
         <button className="nav-picker-btn" onClick={onOpenBookPicker} title="Cambiar libro o capítulo">
           <BookOpen size={14} />
           <span>
