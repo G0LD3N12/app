@@ -53,9 +53,28 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
     copyTimerRef.current = window.setTimeout(() => setIsCopied(false), 1800);
   };
 
+  const { dropCapChar, mainText, isAttached } = useMemo(() => {
+    if (verse.verse !== 1) {
+      return { dropCapChar: null, mainText: verse.text, isAttached: false };
+    }
+
+    const trimmed = verse.text.trim();
+    const match = trimmed.match(/^([«"“'¿¡]?)([A-Za-zÁÉÍÓÚÜÑáéíóúüñ])/);
+    if (!match) {
+      return { dropCapChar: null, mainText: verse.text, isAttached: false };
+    }
+
+    const dropCap = match[0];
+    const remaining = trimmed.slice(dropCap.length);
+    const isAttached = remaining.length > 0 && !/^\s/.test(remaining);
+    return { dropCapChar: dropCap, mainText: remaining, isAttached };
+  }, [verse.verse, verse.text]);
+
   const interactiveText = useMemo(() => {
+    const textToParse = mainText;
+
     if (!verse.concepts || verse.concepts.length === 0) {
-      return <span>{verse.text}</span>;
+      return <span>{textToParse}</span>;
     }
 
     const testers = verse.concepts
@@ -70,13 +89,13 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
       .filter((entry): entry is { concept: (typeof verse.concepts)[number]; tester: RegExp } => entry !== null);
 
     if (testers.length === 0) {
-      return <span>{verse.text}</span>;
+      return <span>{textToParse}</span>;
     }
 
     try {
       const combined = testers.map((t) => t.concept.word_pattern).join('|');
       const regex = new RegExp(`(${combined})`, 'gi');
-      const parts = verse.text.split(regex);
+      const parts = textToParse.split(regex);
 
       return (
         <span>
@@ -104,9 +123,9 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
         </span>
       );
     } catch {
-      return <span>{verse.text}</span>;
+      return <span>{textToParse}</span>;
     }
-  }, [verse.text, verse.concepts, onSelectConcept]);
+  }, [mainText, verse.concepts, onSelectConcept]);
 
   return (
     <div
@@ -118,9 +137,18 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
       }}
       onClick={() => onFocusVerse(verse.verse)}
     >
-      <span className="verse-number-editorial" title={`Versículo ${verse.verse}`}>
-        {verse.verse}
-      </span>
+      {dropCapChar ? (
+        <span
+          className={`verse-initial-dropcap ${isAttached ? 'attached' : ''}`}
+          title={`Capítulo ${verse.chapter}, Versículo 1`}
+        >
+          {dropCapChar}
+        </span>
+      ) : (
+        <span className="verse-number-editorial" title={`Versículo ${verse.verse}`}>
+          {verse.verse}
+        </span>
+      )}
 
       <span className="verse-text-editorial">{interactiveText}</span>
 
@@ -130,7 +158,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
           onClick={() => onToggleBookmark(verse.verse)}
           title={isBookmarked ? 'Quitar marcador' : 'Guardar marcador (🔖)'}
         >
-          <Bookmark size={13} fill={isBookmarked ? 'currentColor' : 'none'} />
+          <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
         </button>
 
         <button
@@ -138,7 +166,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
           onClick={handleCopy}
           title={isCopied ? '¡Copiado!' : 'Copiar versículo con cita (📋)'}
         >
-          {isCopied ? <Check size={13} color="#22c55e" /> : <Copy size={13} />}
+          {isCopied ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
         </button>
 
         <button
@@ -146,7 +174,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
           onClick={() => onCompareVerse(verse.verse)}
           title="Comparar en todas las traducciones (⇄)"
         >
-          <SplitSquareVertical size={13} />
+          <SplitSquareVertical size={14} />
         </button>
 
         {verse.concepts && verse.concepts.length > 0 && (
@@ -155,9 +183,11 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
             onClick={() => onSelectConcept(verse.concepts[0].slug)}
             title={`Estudio: ${verse.concepts[0].term_es} (✨)`}
           >
-            <Sparkles size={13} />
+            <Sparkles size={14} />
           </button>
         )}
+
+        <div className="verse-toolbar-divider" />
 
         <button
           className="verse-tool-btn"
@@ -167,7 +197,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
           }}
           title="Buscar coincidencias en la Biblia (🔍)"
         >
-          <Search size={13} />
+          <Search size={14} />
         </button>
       </div>
     </div>

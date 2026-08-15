@@ -351,6 +351,13 @@ export function App() {
         return;
       }
 
+      // Zen Mode Shortcut (Z)
+      if (e.key.toLowerCase() === 'z' && !isInputActive && !e.ctrlKey && !e.metaKey && !e.altKey && activeView === 'reader') {
+        e.preventDefault();
+        setHideTopBar((prev) => !prev);
+        return;
+      }
+
       // Parallel Mode Shortcut (P)
       if (e.key.toLowerCase() === 'p' && !isInputActive && !e.ctrlKey && !e.metaKey && activeView === 'reader') {
         e.preventDefault();
@@ -440,7 +447,7 @@ export function App() {
       )}
 
       {/* Body with Collapsible Sidebar & Main Content */}
-      <div className="app-body-layout">
+      <div className={`app-body-layout ${hideTopBar ? 'zen-mode' : ''}`}>
         <Sidebar
           isExpanded={isSidebarExpanded}
           onToggleExpand={() => setIsSidebarExpanded((prev) => !prev)}
@@ -483,7 +490,7 @@ export function App() {
               <button
                 className="icon-btn"
                 onClick={() => setHideTopBar(false)}
-                title="Restaurar barra superior"
+                title="Salir del Modo Zen (Atajo: Z)"
               >
                 <PanelTopOpen size={15} />
               </button>

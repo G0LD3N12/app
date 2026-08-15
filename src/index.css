@@ -24,13 +24,17 @@
   --accent-gold-hover: rgba(229, 184, 66, 0.24);
   --accent-gold-glow: rgba(229, 184, 66, 0.35);
   
+  --verse-selected-bg: rgba(229, 184, 66, 0.10);
+  --verse-selected-border: #e5b842;
+  --verse-selected-num: #e5b842;
+  
   --badge-biblical: #388bfd;
   --badge-biblical-bg: rgba(56, 139, 253, 0.12);
   --badge-historical: #e5b842;
   --badge-historical-bg: rgba(229, 184, 66, 0.12);
 }
 
-/* OLED Pitch Black (Pure 100% Black & Pure White Contrast, NO Yellow) */
+/* OLED Pitch Black */
 [data-theme="black"] {
   --bg-app: #000000;
   --bg-surface: #000000;
@@ -44,15 +48,19 @@
   --text-secondary: #b0b0b0;
   --text-muted: #808080;
   
-  --accent-gold: #ffffff;
-  --accent-gold-soft: rgba(255, 255, 255, 0.12);
-  --accent-gold-hover: rgba(255, 255, 255, 0.22);
-  --accent-gold-glow: rgba(255, 255, 255, 0.35);
+  --accent-gold: #e5b842;
+  --accent-gold-soft: rgba(229, 184, 66, 0.14);
+  --accent-gold-hover: rgba(229, 184, 66, 0.24);
+  --accent-gold-glow: rgba(229, 184, 66, 0.35);
+  
+  --verse-selected-bg: rgba(229, 184, 66, 0.10);
+  --verse-selected-border: #e5b842;
+  --verse-selected-num: #e5b842;
   
   --badge-biblical: #58a6ff;
   --badge-biblical-bg: rgba(88, 166, 255, 0.14);
-  --badge-historical: #ffffff;
-  --badge-historical-bg: rgba(255, 255, 255, 0.12);
+  --badge-historical: #e5b842;
+  --badge-historical-bg: rgba(229, 184, 66, 0.12);
 }
 
 /* Official Tokyo Night (Tokyo Storm & Electric Blue, NO Yellow) */
@@ -73,6 +81,10 @@
   --accent-gold-soft: rgba(122, 162, 247, 0.15);
   --accent-gold-hover: rgba(122, 162, 247, 0.25);
   --accent-gold-glow: rgba(122, 162, 247, 0.38);
+  
+  --verse-selected-bg: rgba(122, 162, 247, 0.10);
+  --verse-selected-border: #7aa2f7;
+  --verse-selected-num: #7aa2f7;
   
   --badge-biblical: #7dcfff;  /* Cyan */
   --badge-biblical-bg: rgba(125, 207, 255, 0.14);
@@ -99,6 +111,10 @@
   --accent-gold-hover: rgba(203, 166, 247, 0.25);
   --accent-gold-glow: rgba(203, 166, 247, 0.38);
   
+  --verse-selected-bg: rgba(203, 166, 247, 0.10);
+  --verse-selected-border: #cba6f7;
+  --verse-selected-num: #cba6f7;
+  
   --badge-biblical: #89b4fa;  /* Blue */
   --badge-biblical-bg: rgba(137, 180, 250, 0.14);
   --badge-historical: #fab387;/* Peach */
@@ -123,6 +139,10 @@
   --accent-gold-soft: rgba(0, 112, 243, 0.15);
   --accent-gold-hover: rgba(0, 112, 243, 0.25);
   --accent-gold-glow: rgba(0, 112, 243, 0.38);
+  
+  --verse-selected-bg: rgba(0, 112, 243, 0.09);
+  --verse-selected-border: #0070f3;
+  --verse-selected-num: #0070f3;
   
   --badge-biblical: #0070f3;
   --badge-biblical-bg: rgba(0, 112, 243, 0.12);
@@ -149,6 +169,10 @@
   --accent-gold-hover: rgba(136, 192, 208, 0.26);
   --accent-gold-glow: rgba(136, 192, 208, 0.38);
   
+  --verse-selected-bg: rgba(136, 192, 208, 0.11);
+  --verse-selected-border: #88c0d0;
+  --verse-selected-num: #88c0d0;
+  
   --badge-biblical: #81a1c1;  /* Nord Frost */
   --badge-biblical-bg: rgba(129, 161, 193, 0.14);
   --badge-historical: #d08770;/* Nord Orange */
@@ -174,34 +198,42 @@
   --accent-gold-hover: rgba(167, 107, 9, 0.24);
   --accent-gold-glow: rgba(167, 107, 9, 0.32);
   
+  --verse-selected-bg: rgba(167, 107, 9, 0.09);
+  --verse-selected-border: #a76b09;
+  --verse-selected-num: #825206;
+  
   --badge-biblical: #1f6feb;
   --badge-biblical-bg: rgba(31, 111, 235, 0.12);
   --badge-historical: #a76b09;
   --badge-historical-bg: rgba(167, 107, 9, 0.14);
 }
 
-/* Minimal Pure White (Monochrome 100% Black & White — Zero Blue) */
+/* Minimal Pure White / Light (Strict Monochrome Black & White — Zero Yellow) */
 [data-theme="white"], [data-theme="light"] {
-  --bg-app: #f9f9f9;
+  --bg-app: #ffffff;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #f0f0f0;
-  --bg-surface-active: #e5e5e5;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-medium: rgba(0, 0, 0, 0.16);
+  --bg-surface-elevated: #f4f4f5;
+  --bg-surface-active: #e4e4e7;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --border-subtle: #e4e4e7;
+  --border-medium: #d4d4d8;
   
-  --text-primary: #0a0a0a;
-  --text-secondary: #525252;
-  --text-muted: #737373;
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
   
-  --accent-gold: #000000;
-  --accent-gold-soft: rgba(0, 0, 0, 0.07);
-  --accent-gold-hover: rgba(0, 0, 0, 0.14);
-  --accent-gold-glow: rgba(0, 0, 0, 0.22);
+  --accent-gold: #18181b;
+  --accent-gold-soft: rgba(0, 0, 0, 0.05);
+  --accent-gold-hover: rgba(0, 0, 0, 0.09);
+  --accent-gold-glow: rgba(0, 0, 0, 0.16);
   
-  --badge-biblical: #171717;
+  --verse-selected-bg: #f4f4f5;
+  --verse-selected-border: #18181b;
+  --verse-selected-num: #18181b;
+  
+  --badge-biblical: #18181b;
   --badge-biblical-bg: rgba(0, 0, 0, 0.06);
-  --badge-historical: #404040;
+  --badge-historical: #18181b;
   --badge-historical-bg: rgba(0, 0, 0, 0.06);
 }
 
@@ -655,10 +687,91 @@ input {
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1),
+              transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
   z-index: 25;
   flex-shrink: 0;
   overflow: hidden;
+}
+
+/* =========================================================================
+   ZEN MODE SIDEBAR AUTO-HIDE & SMOOTH HOVER REVEAL
+   ========================================================================= */
+
+.app-sidebar.zen-mode {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  z-index: 50;
+  transform: translateX(-100%);
+  overflow: visible; /* Required so hover sensor outside the box can capture mouse */
+  border-right: 1px solid var(--border-medium);
+  box-shadow: none;
+  will-change: transform, box-shadow;
+  /* Smooth exit animation when cursor leaves with grace delay */
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.08s,
+              box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.08s,
+              width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+/* Keep inner contents cleanly contained within sidebar bounds */
+.app-sidebar.zen-mode .sidebar-top,
+.app-sidebar.zen-mode .sidebar-nav,
+.app-sidebar.zen-mode .sidebar-zen-section {
+  overflow: hidden;
+}
+
+/* Zen Hover Sensor: Positioned right along the screen left edge when hidden */
+.sidebar-zen-sensor {
+  position: absolute;
+  top: 0;
+  right: -20px;
+  width: 20px;
+  height: 100%;
+  z-index: 55;
+  cursor: pointer;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Elegant Zen Edge Indicator Pill when hovering the left screen margin */
+.sidebar-zen-sensor::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 36px;
+  border-radius: 3px;
+  background-color: var(--accent-gold);
+  opacity: 0;
+  transition: opacity 0.24s ease, height 0.24s ease;
+  pointer-events: none;
+}
+
+.sidebar-zen-sensor:hover::before {
+  opacity: 0.55;
+  height: 56px;
+}
+
+/* Silky smooth entrance on hover or focus */
+.app-sidebar.zen-mode:hover,
+.app-sidebar.zen-mode:focus-within {
+  transform: translateX(0);
+  box-shadow: 12px 0 38px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-medium);
+  /* Instant, fluid entrance with smooth deceleration */
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) 0s,
+              box-shadow 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) 0s,
+              width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.app-sidebar.zen-mode:hover .sidebar-zen-sensor::before,
+.app-sidebar.zen-mode:focus-within .sidebar-zen-sensor::before {
+  opacity: 0;
 }
 
 .app-sidebar.collapsed {
@@ -1038,92 +1151,143 @@ input {
 .verses-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
+  padding-top: 14px;
 }
 
-/* Subtle Editorial Verse Row with Left Margin Indicator (NO Heavy Block) */
+/* Devotional Editorial Verse Row with Noble Margin Highlight */
 .verse-row-editorial {
   position: relative;
   color: var(--text-primary);
   text-align: justify;
-  padding: 8px 50px 8px 16px;
-  border-radius: 6px;
-  border-left: 3px solid transparent;
-  transition: background-color 0.14s ease, border-left-color 0.14s ease;
-  content-visibility: auto;
-  contain-intrinsic-size: 0 42px;
+  padding: 10px 18px 10px 18px;
+  border-radius: 0 8px 8px 0;
+  border-left: 3.5px solid transparent;
+  transition: background-color 0.16s ease, border-left-color 0.16s ease;
 }
 
 .verse-row-editorial:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--verse-selected-bg, var(--accent-gold-soft));
   border-left-color: var(--border-medium);
+  z-index: 30;
 }
 
 .verse-row-editorial.selected {
-  background-color: var(--accent-gold-soft);
-  border-left-color: var(--accent-gold);
+  background-color: var(--verse-selected-bg, var(--accent-gold-soft));
+  border-left-color: var(--verse-selected-border, var(--accent-gold));
+  z-index: 30;
 }
 
-.verse-row-editorial.bookmarked .verse-number-editorial {
-  color: var(--accent-gold);
+.verse-row-editorial.bookmarked .verse-number-editorial,
+.verse-row-editorial.bookmarked .verse-initial-dropcap {
+  color: var(--verse-selected-num, var(--accent-gold));
   text-decoration: underline;
 }
 
-.verse-number-editorial {
-  font-family: var(--font-sans);
-  font-size: 0.72em;
+/* Bible Editorial Initial Drop Cap (Letra Capitular Bíblica) */
+.verse-initial-dropcap {
+  font-family: var(--font-title-luxury), var(--font-title), var(--font-serif);
+  font-size: 2.25em;
   font-weight: 700;
-  color: var(--accent-gold);
+  line-height: 0.82;
+  float: left;
+  margin-top: 3px;
   margin-right: 8px;
+  margin-bottom: -2px;
+  color: var(--verse-selected-num, var(--accent-gold));
   user-select: none;
-  vertical-align: super;
+  display: block;
+}
+
+/* When the drop cap is the start of a multi-letter word (e.g. "De", "En", "El") */
+.verse-initial-dropcap.attached {
+  margin-right: 2px;
+}
+
+.verse-number-editorial {
+  font-family: var(--font-serif);
+  font-size: 0.82em;
+  font-weight: 700;
+  color: var(--verse-selected-num, var(--accent-gold));
+  margin-right: 9px;
+  user-select: none;
+  display: inline-block;
+  vertical-align: baseline;
   transition: color 0.15s ease;
 }
 
 .verse-row-editorial.selected .verse-number-editorial {
-  color: var(--accent-gold);
+  color: var(--verse-selected-num, var(--accent-gold));
+  font-weight: 800;
 }
 
 .verse-text-editorial {
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
-/* Floating Micro-Toolbar on Verse Hover (Symmetrical & Clean) */
+/* Floating Pill Toolbar on Verse Hover & Selection (Positioned cleanly ABOVE the verse) */
 .verse-floating-toolbar {
   position: absolute;
-  right: 8px;
-  top: 6px;
-  display: flex;
+  right: 14px;
+  top: -26px;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-medium);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  border-radius: 6px;
-  padding: 2px 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  padding: 3px 5px;
   opacity: 0;
   pointer-events: none;
-  transform: scale(0.95);
-  transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 10;
+  transform: translateY(4px) scale(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+}
+
+/* Invisible hit bridge between toolbar and verse to prevent losing hover */
+.verse-floating-toolbar::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 26px;
+  background: transparent;
 }
 
 .verse-row-editorial:hover .verse-floating-toolbar,
-.verse-row-editorial.selected .verse-floating-toolbar {
+.verse-row-editorial.selected .verse-floating-toolbar,
+.parallel-verse-row:hover .verse-floating-toolbar,
+.parallel-verse-row.selected .verse-floating-toolbar {
   opacity: 1;
   pointer-events: auto;
-  transform: scale(1);
+  transform: translateY(0) scale(1);
+}
+
+.verse-toolbar-divider {
+  width: 1px;
+  height: 14px;
+  background-color: var(--border-medium);
+  margin: 0 3px;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .verse-tool-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  transition: all 0.12s ease;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-primary);
+  transition: background-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
+  background: transparent;
+  flex-shrink: 0;
 }
 
 .verse-tool-btn:hover {
@@ -1134,10 +1298,63 @@ input {
 
 .verse-tool-btn.active-bookmark {
   color: var(--accent-gold);
+  background-color: var(--accent-gold-soft);
 }
 
 .verse-tool-btn.highlight-study {
   color: var(--accent-gold);
+}
+
+/* White Theme Specific Overrides (Crisp, High Contrast, 0 Yellow) */
+[data-theme="white"] .verse-floating-toolbar,
+[data-theme="light"] .verse-floating-toolbar {
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="white"] .verse-tool-btn,
+[data-theme="light"] .verse-tool-btn {
+  color: #18181b;
+}
+
+[data-theme="white"] .verse-tool-btn:hover,
+[data-theme="light"] .verse-tool-btn:hover {
+  background-color: #f4f4f5;
+  color: #000000;
+}
+
+[data-theme="white"] .verse-toolbar-divider,
+[data-theme="light"] .verse-toolbar-divider {
+  background-color: #e4e4e7;
+}
+
+[data-theme="white"] .app-brand-text,
+[data-theme="light"] .app-brand-text {
+  color: #000000;
+  text-shadow: none;
+}
+
+[data-theme="white"] .app-brand-char,
+[data-theme="light"] .app-brand-char {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="white"] .version-primary-tag,
+[data-theme="light"] .version-primary-tag {
+  color: #000000;
+}
+
+[data-theme="white"] .study-word-clickable,
+[data-theme="light"] .study-word-clickable {
+  color: #18181b;
+  border-bottom-color: #18181b;
+}
+
+[data-theme="white"] .verse-initial-dropcap,
+[data-theme="light"] .verse-initial-dropcap {
+  color: #18181b;
 }
 
 /* Interactive Study Words */
@@ -1231,19 +1448,30 @@ input {
 }
 
 .parallel-verse-row {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  border-radius: 8px;
-  transition: background 0.12s ease;
+  border-radius: 0 8px 8px 0;
+  border-left: 3.5px solid transparent;
+  padding: 6px 14px;
+  transition: background-color 0.16s ease, border-left-color 0.16s ease;
 }
 
 .parallel-verse-row:hover {
-  background-color: rgba(255, 255, 255, 0.015);
+  background-color: var(--verse-selected-bg, var(--accent-gold-soft));
+  border-left-color: var(--border-medium);
 }
 
 .parallel-verse-row.selected {
-  background-color: var(--accent-gold-soft);
+  background-color: var(--verse-selected-bg, var(--accent-gold-soft));
+  border-left-color: var(--verse-selected-border, var(--accent-gold));
+}
+
+.parallel-verse-row .verse-row-editorial {
+  padding: 4px 6px;
+  border-left: none !important;
+  background-color: transparent !important;
 }
 
 .parallel-col {
@@ -4177,6 +4405,209 @@ body,
   height: 100%;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* =========================================================================
+   VERSE COMPARISON MODAL (SOLID DIALOG, BACKDROP BLUR & FULL CONTRAST)
+   ========================================================================= */
+
+.verse-compare-backdrop,
+.search-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+.verse-compare-card,
+.search-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 740px;
+  max-height: 82vh;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg), 0 20px 50px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.verse-compare-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-elevated);
+}
+
+.verse-compare-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.verse-compare-title {
+  font-family: var(--font-title-luxury), var(--font-title), var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.verse-compare-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verse-compare-copy-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  transition: all 0.14s ease;
+  cursor: pointer;
+}
+
+.verse-compare-copy-all-btn:hover {
+  background-color: var(--bg-surface-active);
+  border-color: var(--border-focus, var(--accent-gold));
+  color: var(--accent-gold);
+}
+
+.verse-compare-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(82vh - 70px);
+}
+
+.verse-compare-item {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+.verse-compare-item:hover {
+  border-color: var(--border-medium);
+}
+
+.verse-compare-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.verse-compare-version-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.verse-compare-lang-pill {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.verse-compare-text {
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+.verse-compare-copy-single-btn {
+  opacity: 0.6;
+  transition: opacity 0.14s ease, color 0.14s ease;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.verse-compare-copy-single-btn:hover {
+  opacity: 1;
+  color: var(--accent-gold);
+  background-color: var(--bg-surface);
+}
+
+/* White Theme Specific Overrides for Verse Compare Modal */
+[data-theme="white"] .verse-compare-card,
+[data-theme="light"] .verse-compare-card {
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="white"] .verse-compare-header,
+[data-theme="light"] .verse-compare-header {
+  background-color: #f4f4f5;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+[data-theme="white"] .verse-compare-copy-all-btn,
+[data-theme="light"] .verse-compare-copy-all-btn {
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  color: #18181b;
+}
+
+[data-theme="white"] .verse-compare-copy-all-btn:hover,
+[data-theme="light"] .verse-compare-copy-all-btn:hover {
+  background-color: #f4f4f5;
+  color: #000000;
+  border-color: #18181b;
+}
+
+[data-theme="white"] .verse-compare-item,
+[data-theme="light"] .verse-compare-item {
+  background-color: #ffffff;
+  border: 1px solid #e4e4e7;
+}
+
+[data-theme="white"] .verse-compare-item:hover,
+[data-theme="light"] .verse-compare-item:hover {
+  border-color: #a1a1aa;
+}
+
+[data-theme="white"] .verse-compare-version-name,
+[data-theme="light"] .verse-compare-version-name {
+  color: #18181b;
 }
 
 

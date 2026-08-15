@@ -188,6 +188,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   versions,
   currentVersion,
   onSelectDefaultVersion,
+  hideTopBar,
+  onToggleHideTopBar,
   aiConfig,
   onUpdateAIConfig,
   searchLanguages,
@@ -315,6 +317,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={handleToggleDecorations}
                 title={nativeDecorations ? 'Ocultar barra nativa de Linux' : 'Mostrar barra nativa de Linux'}
                 aria-label="Alternar barra de título nativa"
+              >
+                <div className="verbum-switch-knob" />
+              </button>
+            </div>
+
+            {/* Modo Zen Inmersivo toggle */}
+            <div className="settings-row">
+              <div className="settings-label-col">
+                <span className="settings-row-title">Modo Zen (Inmersión Total)</span>
+                <span className="settings-row-desc">
+                  {hideTopBar
+                    ? 'Activo: Barra superior y lateral ocultas. La barra lateral aparece al pasar el cursor por el borde izquierdo.'
+                    : 'Inactivo: Barra superior y lateral siempre visibles.'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className={`verbum-switch ${hideTopBar ? 'active' : ''}`}
+                onClick={onToggleHideTopBar}
+                title={hideTopBar ? 'Desactivar Modo Zen' : 'Activar Modo Zen'}
+                aria-label="Alternar Modo Zen"
               >
                 <div className="verbum-switch-knob" />
               </button>

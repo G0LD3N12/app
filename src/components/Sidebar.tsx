@@ -93,7 +93,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   ];
 
   return (
-    <aside className={`app-sidebar ${isExpanded ? 'expanded' : 'collapsed'}`}>
+    <aside className={`app-sidebar ${isExpanded ? 'expanded' : 'collapsed'} ${hideTopBar ? 'zen-mode' : ''}`}>
+      {/* Zen Mode Edge Hover Sensor */}
+      {hideTopBar && <div className="sidebar-zen-sensor" title="Pasar cursor para mostrar barra lateral" />}
+
       {/* Sidebar Header / Toggle Button */}
       <div className="sidebar-top">
         <button
@@ -143,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         <button
           className={`sidebar-nav-item ${hideTopBar ? 'active' : ''}`}
           onClick={onToggleHideTopBar}
-          title={hideTopBar ? 'Restaurar barra superior' : 'Modo Zen'}
+          title={hideTopBar ? 'Salir del Modo Zen' : 'Modo Zen'}
         >
           <div className="sidebar-icon-wrapper icon-anim-zen">
             {hideTopBar ? <PanelTopOpen size={18} /> : <PanelTopClose size={18} />}

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Book, BibleVersion } from '../types';
 import { fetchChapter } from '../services/bibleService';
-import { X, Copy, Check, Layers } from 'lucide-react';
+import { X, Copy, Check, SplitSquareVertical } from 'lucide-react';
 
 interface VerseCompareModalProps {
   isOpen: boolean;
@@ -21,10 +21,16 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
   versions,
 }) => {
   const [comparisons, setComparisons] = useState<{ version: BibleVersion; text: string }[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedSingle, setCopiedSingle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !book) return;
+
+    let isMounted = true;
+    setIsLoading(true);
+    setComparisons([]);
 
     const loadAllVersions = async () => {
       const results: { version: BibleVersion; text: string }[] = [];
@@ -32,78 +38,117 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
         try {
           const verses = await fetchChapter(v.id, book.id, chapter);
           const match = verses.find((item) => item.verse === verseNum);
-          if (match) {
+          if (match && isMounted) {
             results.push({ version: v, text: match.text });
           }
         } catch (e) {
           console.error(`Error loading comparison for ${v.id}:`, e);
         }
       }
-      setComparisons(results);
+      if (isMounted) {
+        setComparisons(results);
+        setIsLoading(false);
+      }
     };
 
     loadAllVersions();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, book, chapter, verseNum, versions]);
 
-  if (!isOpen || !book) return null;
-
-  const handleCopyAll = () => {
+  const handleCopyAll = useCallback(() => {
+    if (!book) return;
     const textToCopy = comparisons
-      .map((c) => `[${c.version.short_name}] ${book.name_es} ${chapter}:${verseNum}\n"${c.text}"`)
+      .map((c) => `[${c.version.short_name}] ${book.name_es} ${chapter}:${verseNum}\n«${c.text}»`)
       .join('\n\n');
 
     navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  }, [comparisons, book, chapter, verseNum]);
+
+  const handleCopySingle = useCallback((c: { version: BibleVersion; text: string }) => {
+    if (!book) return;
+    const text = `«${c.text}» — ${book.name_es} ${chapter}:${verseNum} (${c.version.short_name})`;
+    navigator.clipboard.writeText(text);
+    setCopiedSingle(c.version.id);
+    setTimeout(() => setCopiedSingle(null), 1800);
+  }, [book, chapter, verseNum]);
+
+  if (!isOpen || !book) return null;
 
   return (
-    <div className="search-modal-backdrop" onClick={onClose}>
-      <div className="search-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px' }}>
-        <div className="search-input-header" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Layers size={18} color="var(--accent-gold)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+    <div className="verse-compare-backdrop" onClick={onClose}>
+      <div className="verse-compare-card" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="verse-compare-header">
+          <div className="verse-compare-title-group">
+            <SplitSquareVertical size={19} color="var(--accent-gold)" />
+            <h3 className="verse-compare-title">
               Comparar: {book.name_es} {chapter}:{verseNum}
             </h3>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="verse-compare-actions">
             <button
-              className="icon-btn"
+              className="verse-compare-copy-all-btn"
               onClick={handleCopyAll}
               title="Copiar todas las traducciones al portapapeles"
-              style={{ width: 'auto', padding: '6px 12px', fontSize: '0.8rem', gap: '6px', backgroundColor: 'var(--bg-surface)' }}
             >
-              {copied ? <Check size={14} color="var(--accent-gold)" /> : <Copy size={14} />}
-              <span>{copied ? 'Copiado' : 'Copiar todo'}</span>
+              {copiedAll ? <Check size={14} color="var(--accent-gold)" /> : <Copy size={14} />}
+              <span>{copiedAll ? '¡Copiado!' : 'Copiar todo'}</span>
             </button>
-            <button className="icon-btn" onClick={onClose}>
+            <button className="icon-btn" onClick={onClose} title="Cerrar (Esc)">
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {comparisons.map((c) => (
-            <div
-              key={c.version.id}
-              style={{
-                padding: '14px 16px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.8rem', fontWeight: '700' }}>
-                <span style={{ color: 'var(--accent-gold)' }}>{c.version.name} ({c.version.short_name})</span>
-                <span style={{ color: 'var(--text-muted)' }}>{c.version.language.toUpperCase()}</span>
-              </div>
-              <p style={{ fontFamily: 'var(--font-serif)', fontSize: '1rem', lineHeight: '1.6', color: 'var(--text-primary)' }}>
-                {c.text}
-              </p>
+        {/* Body list of translations */}
+        <div className="verse-compare-body">
+          {isLoading ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <span>Cargando traducciones...</span>
             </div>
-          ))}
+          ) : comparisons.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <span>No se encontraron versiones para este versículo.</span>
+            </div>
+          ) : (
+            comparisons.map((c) => (
+              <div key={c.version.id} className="verse-compare-item">
+                <div className="verse-compare-item-header">
+                  <div className="verse-compare-version-name">
+                    <span>{c.version.name}</span>
+                    <span className="verse-compare-lang-pill">{c.version.short_name}</span>
+                    <span className="verse-compare-lang-pill">{c.version.language.toUpperCase()}</span>
+                  </div>
+
+                  <button
+                    className="verse-compare-copy-single-btn"
+                    onClick={() => handleCopySingle(c)}
+                    title="Copiar solo este versículo"
+                  >
+                    {copiedSingle === c.version.id ? (
+                      <>
+                        <Check size={12} color="#22c55e" />
+                        <span style={{ color: '#22c55e' }}>Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        <span>Copiar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="verse-compare-text">{c.text}</p>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
