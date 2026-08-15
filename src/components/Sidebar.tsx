@@ -70,12 +70,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
           <div className="sidebar-icon-wrapper icon-anim-panel">
             {isExpanded ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
           </div>
-          {isExpanded && (
-            <div className="sidebar-label-group">
-              <span className="sidebar-item-label">Colapsar</span>
-              <span className="sidebar-shortcut-tag">Ctrl+B</span>
-            </div>
-          )}
         </button>
       </div>
 
