@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             <button
               key={item.id}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-              onClick={item.action}
+              onClick={() => item.action()}
               title={!isExpanded ? `${item.label} ${item.shortcut ? `(${item.shortcut})` : ''}` : undefined}
             >
               <div className={`sidebar-icon-wrapper ${item.iconClass}`}>

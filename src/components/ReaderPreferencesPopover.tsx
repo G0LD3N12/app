@@ -38,7 +38,7 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
   const fontOptions: Array<{ id: ScriptureFont; name: string; fontVar: string }> = [
     { id: 'literata', name: 'Literata', fontVar: 'var(--font-serif)' },
     { id: 'crimson', name: 'Crimson', fontVar: 'var(--font-crimson)' },
-    { id: 'garamond', name: 'Cormorant', fontVar: 'var(--font-garamond)' },
+    { id: 'garamond', name: 'Cormorant Garamond', fontVar: 'var(--font-garamond)' },
     { id: 'sans', name: 'Sans', fontVar: 'var(--font-sans)' },
   ];
 

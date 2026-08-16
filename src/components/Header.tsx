@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       <div className="header-center no-drag" data-tauri-drag-region>
         <button
           className="search-trigger-btn"
-          onClick={onOpenCommandPalette}
+          onClick={() => onOpenCommandPalette()}
           title="Buscar en la Biblia, concepto o comando (Ctrl+K o Ctrl+F)"
         >
           <Search size={13} className="search-pill-icon" />

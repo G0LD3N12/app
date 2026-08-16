@@ -4,11 +4,10 @@ pub mod db;
 
 use db::DatabaseManager;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 pub struct AppState {
-    pub db: Mutex<DatabaseManager>,
+    pub db: DatabaseManager,
 }
 
 fn resolve_resource_dir(app: &AppHandle) -> PathBuf {
@@ -64,9 +63,7 @@ pub fn run() {
             let res_dir = resolve_resource_dir(app.handle());
             let db_mgr = DatabaseManager::new(res_dir)
                 .expect("Failed to initialize SQLite DatabaseManager");
-            app.manage(AppState {
-                db: Mutex::new(db_mgr),
-            });
+            app.manage(AppState { db: db_mgr });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

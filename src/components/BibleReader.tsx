@@ -1,12 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Book, VerseWithStudy, ScriptureFont, LineHeightPreset, MaxWidthPreset } from '../types';
-import { VerseItem } from './VerseItem';
+import { VerseItem, ConceptTester } from './VerseItem';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface BibleReaderProps {
   currentBook: Book | null;
   currentChapter: number;
-  currentVersion: string;
   versionShortName: string;
   verses: VerseWithStudy[];
   parallelVerses?: VerseWithStudy[];
@@ -18,7 +17,7 @@ interface BibleReaderProps {
   maxWidthPreset: MaxWidthPreset;
   selectedVerse: number | null;
   onSelectVerse: (vNum: number) => void;
-  bookmarks: number[];
+  bookmarkedVerses: Set<number>;
   onToggleBookmark: (verseNum: number) => void;
   onSelectConcept: (slug: string) => void;
   onCompareVerse: (verseNum: number) => void;
@@ -42,7 +41,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   maxWidthPreset,
   selectedVerse,
   onSelectVerse,
-  bookmarks,
+  bookmarkedVerses,
   onToggleBookmark,
   onSelectConcept,
   onCompareVerse,
@@ -52,6 +51,23 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   onOpenVersionLibrary,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Pre-compile concept regex testers once per chapter (shared across all verses)
+  const chapterTesters = useMemo<ConceptTester[]>(() => {
+    const seen = new Set<number>();
+    return verses.flatMap((v) => v.concepts).filter((c) => {
+      if (!c.word_pattern || seen.has(c.concept_id)) return false;
+      seen.add(c.concept_id);
+      try {
+        return true;
+      } catch {
+        return false;
+      }
+    }).map((c) => ({
+      concept: c,
+      tester: new RegExp(`^(${c.word_pattern})$`, 'i'),
+    }));
+  }, [verses]);
 
   // Scroll to target verse when updated
   useEffect(() => {
@@ -146,12 +162,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                 fontSize={fontSize}
                 lineHeight={getLineHeightMultiplier()}
                 isSelected={selectedVerse === v.verse}
-                isBookmarked={bookmarks.includes(v.verse)}
+                isBookmarked={bookmarkedVerses.has(v.verse)}
                 onToggleBookmark={onToggleBookmark}
                 onSelectConcept={onSelectConcept}
                 onCompareVerse={onCompareVerse}
                 onSearchWord={onSearchWord}
                 onFocusVerse={onSelectVerse}
+                chapterTesters={chapterTesters}
               />
             ))}
           </div>
@@ -196,12 +213,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                         fontSize={fontSize - 1}
                         lineHeight={getLineHeightMultiplier()}
                         isSelected={selectedVerse === v.verse}
-                        isBookmarked={bookmarks.includes(v.verse)}
+                        isBookmarked={bookmarkedVerses.has(v.verse)}
                         onToggleBookmark={onToggleBookmark}
                         onSelectConcept={onSelectConcept}
                         onCompareVerse={onCompareVerse}
                         onSearchWord={onSearchWord}
                         onFocusVerse={onSelectVerse}
+                        chapterTesters={chapterTesters}
                       />
                     </div>
 

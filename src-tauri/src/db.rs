@@ -1,4 +1,6 @@
-use rusqlite::{params, Connection, Result};
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -86,28 +88,35 @@ pub struct StudyConceptDetail {
 }
 
 pub struct DatabaseManager {
-    conn: Connection,
+    pool: Pool<SqliteConnectionManager>,
     resource_dir: PathBuf,
 }
 
 impl DatabaseManager {
     pub fn new(resource_dir: PathBuf) -> Result<Self, String> {
         let db_path = resource_dir.join("bible.db");
-        let conn = Connection::open(&db_path)
-            .map_err(|e| format!("Failed to open database at {:?}: {}", db_path, e))?;
+        // Every pooled connection gets the same high-read-performance PRAGMAs
+        let manager = SqliteConnectionManager::file(&db_path).with_init(|conn: &mut Connection| {
+            let _mode: std::result::Result<String, _> =
+                conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0));
+            let _ = conn.execute("PRAGMA synchronous = NORMAL", []);
+            let _ = conn.execute("PRAGMA cache_size = -64000", []);
+            let _ = conn.execute("PRAGMA temp_store = MEMORY", []);
+            let _ = conn.execute("PRAGMA mmap_size = 268435456", []);
+            Ok(())
+        });
 
-        // Configure connection for high read performance
-        let _mode: Result<String, _> = conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0));
-        let _ = conn.execute("PRAGMA synchronous = NORMAL", []);
-        let _ = conn.execute("PRAGMA cache_size = -64000", []);
-        let _ = conn.execute("PRAGMA temp_store = MEMORY", []);
-        let _ = conn.execute("PRAGMA mmap_size = 268435456", []);
+        let pool = r2d2::Pool::builder()
+            .max_size(4)
+            .build(manager)
+            .map_err(|e| format!("Failed to create SQLite connection pool at {:?}: {}", db_path, e))?;
 
-        Ok(Self { conn, resource_dir })
+        Ok(Self { pool, resource_dir })
     }
 
     pub fn get_versions(&self) -> Result<Vec<BibleVersion>, String> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
             "SELECT id, name, short_name, language, license, display_order FROM versions ORDER BY display_order ASC"
         ).map_err(|e| e.to_string())?;
 
@@ -130,7 +139,8 @@ impl DatabaseManager {
     }
 
     pub fn get_books(&self) -> Result<Vec<Book>, String> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
             "SELECT id, code, name_es, name_en, testament, total_chapters FROM books ORDER BY id ASC"
         ).map_err(|e| e.to_string())?;
 
@@ -158,8 +168,10 @@ impl DatabaseManager {
         book_id: i32,
         chapter: i32,
     ) -> Result<Vec<VerseWithStudy>, String> {
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
+
         // Fetch verses
-        let mut stmt = self.conn.prepare(
+        let mut stmt = conn.prepare(
             "SELECT id, version_id, book_id, chapter, verse, text FROM verses 
              WHERE version_id = ?1 AND book_id = ?2 AND chapter = ?3 
              ORDER BY verse ASC"
@@ -183,7 +195,7 @@ impl DatabaseManager {
         }
 
         // Fetch concept occurrences for this chapter
-        let mut occ_stmt = self.conn.prepare(
+        let mut occ_stmt = conn.prepare(
             "SELECT co.verse, c.id, c.slug, c.term_es, c.term_en, c.concept_type, co.word_pattern, c.short_summary
              FROM concept_occurrences co
              JOIN concepts c ON co.concept_id = c.id
@@ -206,12 +218,10 @@ impl DatabaseManager {
         }).map_err(|e| e.to_string())?;
 
         let mut by_verse: HashMap<i32, Vec<ConceptOccurrenceBadge>> = HashMap::new();
-        for r in occ_rows {
-            if let Ok((v_num, badge)) = r {
-                let list = by_verse.entry(v_num).or_default();
-                if !list.iter().any(|c| c.concept_id == badge.concept_id) {
-                    list.push(badge);
-                }
+        for (v_num, badge) in occ_rows.flatten() {
+            let list = by_verse.entry(v_num).or_default();
+            if !list.iter().any(|c| c.concept_id == badge.concept_id) {
+                list.push(badge);
             }
         }
         for verse in verses.iter_mut() {
@@ -235,11 +245,12 @@ impl DatabaseManager {
         }
 
         // 1. Resolve aliases
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
         let mut terms = Vec::new();
         let tokens: Vec<&str> = clean_q.split_whitespace().collect();
         for t in &tokens {
             let canon_clean = t.to_lowercase();
-            let mut alias_stmt = self.conn.prepare(
+            let mut alias_stmt = conn.prepare(
                 "SELECT alias_term FROM search_aliases WHERE canonical_term = ?1 OR alias_term = ?1"
             ).map_err(|e| e.to_string())?;
 
@@ -249,10 +260,8 @@ impl DatabaseManager {
             }).map_err(|e| e.to_string())?;
 
             let mut alias_list = Vec::new();
-            for a in alias_rows {
-                if let Ok(val) = a {
-                    alias_list.push(format!("\"{}\"", val));
-                }
+            for val in alias_rows.flatten() {
+                alias_list.push(format!("\"{}\"", val));
             }
 
             if alias_list.is_empty() {
@@ -297,7 +306,7 @@ impl DatabaseManager {
             limit.min(200)
         );
 
-        let mut stmt = self.conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
 
         let mut param_values: Vec<&dyn rusqlite::ToSql> = Vec::new();
         param_values.push(&fts_match_query);
@@ -327,13 +336,14 @@ impl DatabaseManager {
     }
 
     pub fn get_concept_detail(&self, slug: &str) -> Result<StudyConceptDetail, String> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
             "SELECT id, slug, term_es, term_en, concept_type, short_summary, historical_context_md, biblical_context_md, strongs_code
              FROM concepts WHERE slug = ?1"
         ).map_err(|e| e.to_string())?;
 
         let mut concept_opt = None;
-        let rows = stmt.query_map([slug], |row| {
+        let mut rows = stmt.query_map([slug], |row| {
             Ok(StudyConceptDetail {
                 id: row.get(0)?,
                 slug: row.get(1)?,
@@ -348,15 +358,14 @@ impl DatabaseManager {
             })
         }).map_err(|e| e.to_string())?;
 
-        for r in rows {
+        if let Some(r) = rows.next() {
             concept_opt = Some(r.map_err(|e| e.to_string())?);
-            break;
         }
 
         let mut concept = concept_opt.ok_or_else(|| format!("Concept '{}' not found", slug))?;
 
         // Load images
-        let mut img_stmt = self.conn.prepare(
+        let mut img_stmt = conn.prepare(
             "SELECT id, concept_id, file_path, title, caption, source_attribution, license, width, height
              FROM concept_images WHERE concept_id = ?1"
         ).map_err(|e| e.to_string())?;
@@ -392,8 +401,9 @@ impl DatabaseManager {
         Ok(concept)
     }
 
-    pub fn get_all_concepts(&self) -> Result<Vec<StudyConceptDetail>, String> {
-        let mut stmt = self.conn.prepare(
+    pub fn get_all_concepts(&self, include_image_data: bool) -> Result<Vec<StudyConceptDetail>, String> {
+        let conn = self.pool.get().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
             "SELECT id, slug, term_es, term_en, concept_type, short_summary, historical_context_md, biblical_context_md, strongs_code
              FROM concepts ORDER BY id ASC"
         ).map_err(|e| e.to_string())?;
@@ -417,18 +427,22 @@ impl DatabaseManager {
         for r in rows {
             let mut concept = r.map_err(|e| e.to_string())?;
 
-            let mut img_stmt = self.conn.prepare(
+            let mut img_stmt = conn.prepare(
                 "SELECT id, concept_id, file_path, title, caption, source_attribution, license, width, height
                  FROM concept_images WHERE concept_id = ?1"
             ).map_err(|e| e.to_string())?;
 
             let img_rows = img_stmt.query_map([concept.id], |img_row| {
                 let file_path: String = img_row.get(2)?;
+                // Reading image files from disk is expensive; only the study
+                // drawer needs the embedded content, catalogs just show metadata
                 let mut data_content = None;
-                let full_path = self.resource_dir.join(&file_path);
-                if full_path.exists() {
-                    if let Ok(content) = std::fs::read_to_string(&full_path) {
-                        data_content = Some(content);
+                if include_image_data {
+                    let full_path = self.resource_dir.join(&file_path);
+                    if full_path.exists() {
+                        if let Ok(content) = std::fs::read_to_string(&full_path) {
+                            data_content = Some(content);
+                        }
                     }
                 }
 
@@ -467,9 +481,9 @@ mod tests {
         let res_dir = PathBuf::from("resources");
         let db = DatabaseManager::new(res_dir).expect("DatabaseManager failed to initialize");
 
-        // 1. Test Versions
+        // 1. Test Versions (the bundled DB ships 11 translations)
         let versions = db.get_versions().expect("Failed to get versions");
-        assert_eq!(versions.len(), 4);
+        assert_eq!(versions.len(), 11);
 
         // 2. Test Books
         let books = db.get_books().expect("Failed to get books");

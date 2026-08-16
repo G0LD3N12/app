@@ -17,6 +17,17 @@ const isTauriEnv = (): boolean => {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 };
 
+// Curated quick-access list for the Command Palette (single source of truth;
+// the mock catalog below keeps the same slugs in sync)
+export const STUDY_CONCEPT_CATALOG = [
+  { slug: 'anaquitas', name: 'Anaquitas (Anaceos)', desc: 'Gigantes históricos de Hebrón y su tipología' },
+  { slug: 'cordero-pascual', name: 'Cordero Pascual', desc: 'Sacrificio sustitutivo central y tipología de Cristo' },
+  { slug: 'arca-del-pacto', name: 'Arca del Pacto', desc: 'Trono de la presencia divina y propiciatorio' },
+  { slug: 'melquisedec', name: 'Melquisedec', desc: 'Rey de Salem y sacerdote eterno del Altísimo' },
+  { slug: 'logos-palabra', name: 'El Verbo (Logos)', desc: 'La Palabra divina encarnada en Juan 1:1' },
+  { slug: 'serpiente-de-bronce', name: 'Serpiente de Bronce', desc: 'Símbolo de juicio levantado en el desierto' },
+] as const;
+
 const CHAPTER_CACHE_LIMIT = 24;
 const chapterCache = new Map<string, VerseWithStudy[]>();
 const chapterInflight = new Map<string, Promise<VerseWithStudy[]>>();
@@ -25,14 +36,19 @@ function chapterCacheKey(versionId: string, bookId: number, chapter: number): st
   return `${versionId}:${bookId}:${chapter}`;
 }
 
-function rememberChapter(key: string, data: VerseWithStudy[]): void {
-  if (chapterCache.has(key)) {
-    chapterCache.delete(key);
-  } else if (chapterCache.size >= CHAPTER_CACHE_LIMIT) {
-    const oldest = chapterCache.keys().next().value;
-    if (oldest) chapterCache.delete(oldest);
+// Insert into a Map as an LRU entry (refresh position, evict oldest past limit)
+function lruRemember<T>(cache: Map<string, T>, key: string, value: T, limit: number): void {
+  if (cache.has(key)) {
+    cache.delete(key);
+  } else if (cache.size >= limit) {
+    const oldest = cache.keys().next().value;
+    if (oldest) cache.delete(oldest);
   }
-  chapterCache.set(key, data);
+  cache.set(key, value);
+}
+
+function rememberChapter(key: string, data: VerseWithStudy[]): void {
+  lruRemember(chapterCache, key, data, CHAPTER_CACHE_LIMIT);
 }
 
 function takeCachedChapter(key: string): VerseWithStudy[] | undefined {
@@ -100,6 +116,90 @@ export async function fetchChapter(
   chapterInflight.set(key, load);
   return load;
 }
+
+// Concept detail caches: the catalog is loaded once per session and the
+// details (which embed image content) are kept in a small LRU
+const DETAIL_CACHE_LIMIT = 8;
+const conceptDetailCache = new Map<string, StudyConceptDetail>();
+const conceptDetailInflight = new Map<string, Promise<StudyConceptDetail>>();
+let allConceptsCache: StudyConceptDetail[] | null = null;
+let allConceptsInflight: Promise<StudyConceptDetail[]> | null = null;
+
+const MOCK_CONCEPT_DETAIL: StudyConceptDetail = {
+  id: 1,
+  slug: 'anaquitas',
+  term_es: 'Anaquitas',
+  term_en: 'Anakim',
+  concept_type: 'both',
+  short_summary: 'Pueblo de gran estatura descendiente de Anac que habitaba la región montañosa de Hebrón.',
+  biblical_context_md: '### Significado Bíblico\nLos anaquitas representaban los gigantes del temor que solo la fe en Dios puede derribar.',
+  historical_context_md: '### Contexto Histórico\nMencionados en textos de execración egipcios como Iy-anq.',
+  strongs_code: 'H6061',
+  images: [],
+};
+
+const MOCK_ALL_CONCEPTS: StudyConceptDetail[] = [
+  {
+    id: 1,
+    slug: 'anaquitas',
+    term_es: 'Anaquitas',
+    term_en: 'Anakim',
+    concept_type: 'both',
+    short_summary: 'Pueblo de gran estatura descendiente de Anac que habitaba la región montañosa de Hebrón.',
+    strongs_code: 'H6061',
+    images: [],
+  },
+  {
+    id: 2,
+    slug: 'cordero-pascual',
+    term_es: 'Cordero de Dios / Pascual',
+    term_en: 'Passover Lamb',
+    concept_type: 'both',
+    short_summary: 'El sacrificio sustitutivo central instituido en Éxodo 12 que prefigura a Jesucristo.',
+    strongs_code: 'H7716',
+    images: [],
+  },
+  {
+    id: 3,
+    slug: 'arca-del-pacto',
+    term_es: 'Arca del Pacto',
+    term_en: 'Ark of the Covenant',
+    concept_type: 'both',
+    short_summary: 'Cofre sagrado de madera de acacia revestido de oro puro, símbolo de la presencia divina.',
+    strongs_code: 'H727',
+    images: [],
+  },
+  {
+    id: 4,
+    slug: 'melquisedec',
+    term_es: 'Melquisedec',
+    term_en: 'Melchizedek',
+    concept_type: 'biblical_context',
+    short_summary: 'Rey de Salem y sacerdote del Dios Altísimo que bendijo a Abraham (Génesis 14 / Hebreos 7).',
+    strongs_code: 'H4442',
+    images: [],
+  },
+  {
+    id: 5,
+    slug: 'logos-palabra',
+    term_es: 'El Verbo (Logos)',
+    term_en: 'The Word (Logos)',
+    concept_type: 'both',
+    short_summary: 'El Verbo divino eterno encarnado en Jesucristo que revela al Padre (Juan 1:1-14).',
+    strongs_code: 'G3056',
+    images: [],
+  },
+  {
+    id: 6,
+    slug: 'serpiente-de-bronce',
+    term_es: 'Serpiente de Bronce',
+    term_en: 'Bronze Serpent',
+    concept_type: 'both',
+    short_summary: 'Símbolo de juicio y sanidad levantado por Moisés en el desierto (Números 21 / Juan 3:14).',
+    strongs_code: 'H5175',
+    images: [],
+  },
+];
 
 function mockChapter(
   versionId: string,
@@ -177,91 +277,52 @@ export async function searchBible(
 export async function fetchConceptDetail(
   slug: string
 ): Promise<StudyConceptDetail> {
-  if (isTauriEnv()) {
-    return await invoke<StudyConceptDetail>('get_concept_detail', { slug });
+  const cached = conceptDetailCache.get(slug);
+  if (cached) {
+    conceptDetailCache.delete(slug);
+    conceptDetailCache.set(slug, cached);
+    return cached;
   }
 
-  return {
-    id: 1,
-    slug: 'anaquitas',
-    term_es: 'Anaquitas',
-    term_en: 'Anakim',
-    concept_type: 'both',
-    short_summary: 'Pueblo de gran estatura descendiente de Anac que habitaba la región montañosa de Hebrón.',
-    biblical_context_md: '### Significado Bíblico\nLos anaquitas representaban los gigantes del temor que solo la fe en Dios puede derribar.',
-    historical_context_md: '### Contexto Histórico\nMencionados en textos de execración egipcios como Iy-anq.',
-    strongs_code: 'H6061',
-    images: [],
-  };
+  const pending = conceptDetailInflight.get(slug);
+  if (pending) return pending;
+
+  const load = (async () => {
+    try {
+      const data = isTauriEnv()
+        ? await invoke<StudyConceptDetail>('get_concept_detail', { slug })
+        : MOCK_CONCEPT_DETAIL;
+      lruRemember(conceptDetailCache, slug, data, DETAIL_CACHE_LIMIT);
+      return data;
+    } finally {
+      conceptDetailInflight.delete(slug);
+    }
+  })();
+
+  conceptDetailInflight.set(slug, load);
+  return load;
 }
 
 export async function fetchAllConcepts(): Promise<StudyConceptDetail[]> {
-  if (isTauriEnv()) {
-    return await invoke<StudyConceptDetail[]>('get_all_concepts');
-  }
+  if (allConceptsCache) return allConceptsCache;
+  if (allConceptsInflight) return allConceptsInflight;
 
-  return [
-    {
-      id: 1,
-      slug: 'anaquitas',
-      term_es: 'Anaquitas',
-      term_en: 'Anakim',
-      concept_type: 'both',
-      short_summary: 'Pueblo de gran estatura descendiente de Anac que habitaba la región montañosa de Hebrón.',
-      strongs_code: 'H6061',
-      images: [],
-    },
-    {
-      id: 2,
-      slug: 'cordero-pascual',
-      term_es: 'Cordero de Dios / Pascual',
-      term_en: 'Passover Lamb',
-      concept_type: 'both',
-      short_summary: 'El sacrificio sustitutivo central instituido en Éxodo 12 que prefigura a Jesucristo.',
-      strongs_code: 'H7716',
-      images: [],
-    },
-    {
-      id: 3,
-      slug: 'arca-del-pacto',
-      term_es: 'Arca del Pacto',
-      term_en: 'Ark of the Covenant',
-      concept_type: 'both',
-      short_summary: 'Cofre sagrado de madera de acacia revestido de oro puro, símbolo de la presencia divina.',
-      strongs_code: 'H727',
-      images: [],
-    },
-    {
-      id: 4,
-      slug: 'melquisedec',
-      term_es: 'Melquisedec',
-      term_en: 'Melchizedek',
-      concept_type: 'biblical_context',
-      short_summary: 'Rey de Salem y sacerdote del Dios Altísimo que bendijo a Abraham (Génesis 14 / Hebreos 7).',
-      strongs_code: 'H4442',
-      images: [],
-    },
-    {
-      id: 5,
-      slug: 'logos-palabra',
-      term_es: 'El Verbo (Logos)',
-      term_en: 'The Word (Logos)',
-      concept_type: 'both',
-      short_summary: 'El Verbo divino eterno encarnado en Jesucristo que revela al Padre (Juan 1:1-14).',
-      strongs_code: 'G3056',
-      images: [],
-    },
-    {
-      id: 6,
-      slug: 'serpiente-de-bronce',
-      term_es: 'Serpiente de Bronce',
-      term_en: 'Bronze Serpent',
-      concept_type: 'both',
-      short_summary: 'Símbolo de juicio y sanidad levantado por Moisés en el desierto (Números 21 / Juan 3:14).',
-      strongs_code: 'H5175',
-      images: [],
-    },
-  ];
+  const load = (async () => {
+    try {
+      const data = isTauriEnv()
+        ? await invoke<StudyConceptDetail[]>('get_all_concepts', {
+            includeImageData: false,
+          })
+        : MOCK_ALL_CONCEPTS;
+      allConceptsCache = data;
+      return data;
+    } finally {
+      allConceptsInflight = null;
+    }
+  })();
+
+  allConceptsInflight = load;
+  return load;
 }
 
 export async function analyzeSelectionAI(

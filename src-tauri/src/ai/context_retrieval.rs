@@ -135,7 +135,7 @@ pub fn build_selection_context(
 
     // Check if any word in the selection or the phrase matches concept aliases
     let clean_lower = clean_text.to_lowercase();
-    if let Ok(all_concepts) = db.get_all_concepts() {
+    if let Ok(all_concepts) = db.get_all_concepts(false) {
         for c in all_concepts {
             let matches_slug = clean_lower.contains(&c.slug.replace('-', " "));
             let matches_term = clean_lower.contains(&c.term_es.to_lowercase());

@@ -141,6 +141,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires local Ollama daemon"]
     async fn test_ollama_local_status_check() {
         let status = ollama_installer::check_ollama_status("http://localhost:11434", "qwen3:4b-instruct-2507").await;
         println!("\n=== TEST OLLAMA STATUS CHECK ===");

@@ -482,8 +482,8 @@ fn sanitize_and_build_result(
     let trimmed = raw_json.trim();
     let without_fences = if trimmed.starts_with("```") {
         let lines: Vec<&str> = trimmed.lines().collect();
-        let start_idx = if lines.first().map_or(false, |l| l.starts_with("```")) { 1 } else { 0 };
-        let end_idx = if lines.last().map_or(false, |l| l.starts_with("```")) { lines.len() - 1 } else { lines.len() };
+        let start_idx = if lines.first().is_some_and(|l| l.starts_with("```")) { 1 } else { 0 };
+        let end_idx = if lines.last().is_some_and(|l| l.starts_with("```")) { lines.len() - 1 } else { lines.len() };
         if start_idx < end_idx {
             lines[start_idx..end_idx].join("\n")
         } else {

@@ -112,13 +112,9 @@ export interface ReaderSettings {
 }
 
 export interface Bookmark {
-  id: string;
-  version_id: string;
   book_id: number;
-  book_name: string;
   chapter: number;
   verse: number;
-  text_snippet: string;
   created_at: number;
 }
 

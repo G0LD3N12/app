@@ -4,14 +4,12 @@ use tauri::State;
 
 #[tauri::command]
 pub fn get_versions(state: State<'_, AppState>) -> Result<Vec<BibleVersion>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_versions()
+    state.db.get_versions()
 }
 
 #[tauri::command]
 pub fn get_books(state: State<'_, AppState>) -> Result<Vec<Book>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_books()
+    state.db.get_books()
 }
 
 #[tauri::command]
@@ -21,8 +19,7 @@ pub fn get_chapter(
     book_id: i32,
     chapter: i32,
 ) -> Result<Vec<VerseWithStudy>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_chapter(&version_id, book_id, chapter)
+    state.db.get_chapter(&version_id, book_id, chapter)
 }
 
 #[tauri::command]
@@ -32,8 +29,7 @@ pub fn search_bible(
     versions: Vec<String>,
     limit: Option<u32>,
 ) -> Result<Vec<SearchHit>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.search_bible(&query, versions, limit.unwrap_or(100))
+    state.db.search_bible(&query, versions, limit.unwrap_or(100))
 }
 
 #[tauri::command]
@@ -41,16 +37,15 @@ pub fn get_concept_detail(
     state: State<'_, AppState>,
     slug: String,
 ) -> Result<StudyConceptDetail, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_concept_detail(&slug)
+    state.db.get_concept_detail(&slug)
 }
 
 #[tauri::command]
 pub fn get_all_concepts(
     state: State<'_, AppState>,
+    include_image_data: Option<bool>,
 ) -> Result<Vec<StudyConceptDetail>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.get_all_concepts()
+    state.db.get_all_concepts(include_image_data.unwrap_or(false))
 }
 
 #[tauri::command]
@@ -70,11 +65,9 @@ pub async fn analyze_selection_ai(
     };
     let cfg = config.unwrap_or(default_config);
 
-    // Build context with lock, then release lock before async LLM call
-    let ctx = {
-        let db = state.db.lock().map_err(|e| e.to_string())?;
-        crate::ai::context_retrieval::build_selection_context(&db, &request)?
-    };
+    // The pool hands the context builder a short-lived connection; it is
+    // released before the async LLM call below
+    let ctx = crate::ai::context_retrieval::build_selection_context(&state.db, &request)?;
 
     crate::ai::providers::execute_exegesis(&ctx, &request.depth, &cfg).await
 }

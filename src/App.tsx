@@ -2,16 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   BibleVersion,
   Book,
-  VerseWithStudy,
-  AppTheme,
-  ScriptureFont,
-  LineHeightPreset,
-  MaxWidthPreset,
   SelectionStudyRequest,
   StudyExegesisResult,
   AIProviderConfig,
 } from './types';
-import { fetchVersions, fetchBooks, fetchChapter } from './services/bibleService';
+import { fetchVersions, fetchBooks } from './services/bibleService';
 import { Header } from './components/Header';
 import { Sidebar, AppView } from './components/Sidebar';
 import { BibleReader } from './components/BibleReader';
@@ -23,34 +18,26 @@ import { StudyDrawer } from './components/StudyDrawer';
 import { TextSelectionToolbar } from './components/TextSelectionToolbar';
 import { BookPickerModal } from './components/BookPickerModal';
 import { VerseCompareModal } from './components/VerseCompareModal';
+import { usePersistentBoolean } from './hooks/usePersistentBoolean';
+import { useReaderPreferences } from './hooks/useReaderPreferences';
+import { useBookmarks } from './hooks/useBookmarks';
+import { usePassageNavigation } from './hooks/usePassageNavigation';
 import { BookOpen, Search, PanelTopOpen, Columns2 } from 'lucide-react';
 
 export function App() {
   const [versions, setVersions] = useState<BibleVersion[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
-  const [currentBook, setCurrentBook] = useState<Book | null>(null);
-  const [currentChapter, setCurrentChapter] = useState<number>(1);
-  const [currentVersion, setCurrentVersion] = useState<string>('rv1909');
-  const [verses, setVerses] = useState<VerseWithStudy[]>([]);
-  const [targetVerseToScroll, setTargetVerseToScroll] = useState<number | null>(null);
 
   // Parallel Mode State (Two Column Reader)
-  const [parallelMode, setParallelMode] = useState<boolean>(() => {
-    return localStorage.getItem('verbum_parallel_mode') === 'true';
-  });
+  const [parallelMode, setParallelMode] = usePersistentBoolean('verbum_parallel_mode');
   const [secondaryVersion, setSecondaryVersion] = useState<string>(() => {
     return localStorage.getItem('verbum_secondary_version') || 'kjv';
   });
-  const [parallelVerses, setParallelVerses] = useState<VerseWithStudy[]>([]);
 
   // Navigation & View State
   const [activeView, setActiveView] = useState<AppView>('reader');
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(() => {
-    return localStorage.getItem('verbum_sidebar_expanded') === 'true';
-  });
-  const [hideTopBar, setHideTopBar] = useState<boolean>(() => {
-    return localStorage.getItem('verbum_hide_topbar') === 'true';
-  });
+  const [isSidebarExpanded, setIsSidebarExpanded] = usePersistentBoolean('verbum_sidebar_expanded');
+  const [hideTopBar, setHideTopBar] = usePersistentBoolean('verbum_hide_topbar');
 
   // Search language filter (empty array = all languages)
   const [searchLanguages, setSearchLanguages] = useState<string[]>(() => {
@@ -70,6 +57,7 @@ export function App() {
   const [activeConceptSlug, setActiveConceptSlug] = useState<string | null>(null);
   const [isBookPickerOpen, setIsBookPickerOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [paletteSeed, setPaletteSeed] = useState<string>('');
   const [isVersionLibraryOpen, setIsVersionLibraryOpen] = useState<boolean>(false);
   const [versionLibraryTarget, setVersionLibraryTarget] = useState<'primary' | 'secondary'>('primary');
   const [compareVerseNum, setCompareVerseNum] = useState<number | null>(null);
@@ -82,16 +70,6 @@ export function App() {
   // AI & Deep Study State
   const [activeAIRequest, setActiveAIRequest] = useState<SelectionStudyRequest | null>(null);
   const [deepStudyResult, setDeepStudyResult] = useState<StudyExegesisResult | null>(null);
-  const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
-
-  // Bookmarks
-  const [bookmarks, setBookmarks] = useState<number[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('verbum_bookmarks') || '[]');
-    } catch {
-      return [];
-    }
-  });
 
   // AI Config
   const [aiConfig, setAiConfig] = useState<AIProviderConfig>(() => {
@@ -110,66 +88,47 @@ export function App() {
     };
   });
 
-  // Appearance & Reader Typography
-  const [theme, setTheme] = useState<AppTheme>(() => {
-    return (localStorage.getItem('verbum_theme') as AppTheme) || 'obsidian';
-  });
-  const [fontSize, setFontSize] = useState<number>(() => {
-    return parseInt(localStorage.getItem('verbum_font_size') || '19', 10);
-  });
-  const [fontFamily, setFontFamily] = useState<ScriptureFont>(() => {
-    return (localStorage.getItem('verbum_font_family') as ScriptureFont) || 'literata';
-  });
-  const [lineHeightPreset, setLineHeightPreset] = useState<LineHeightPreset>(() => {
-    return (localStorage.getItem('verbum_line_height') as LineHeightPreset) || 'comfortable';
-  });
-  const [maxWidthPreset, setMaxWidthPreset] = useState<MaxWidthPreset>(() => {
-    return (localStorage.getItem('verbum_max_width') as MaxWidthPreset) || 'wide';
-  });
-
-  // Apply theme to document
   useEffect(() => {
-    const isDark = theme !== 'white' && theme !== 'sepia' && theme !== 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('verbum_theme', theme);
-  }, [theme]);
+    localStorage.setItem('verbum_ai_config', JSON.stringify(aiConfig));
+  }, [aiConfig]);
 
-  useEffect(() => {
-    localStorage.setItem('verbum_font_size', fontSize.toString());
-  }, [fontSize]);
+  // Reader appearance (theme + typography), persisted
+  const {
+    theme,
+    setTheme,
+    fontSize,
+    setFontSize,
+    fontFamily,
+    setFontFamily,
+    lineHeightPreset,
+    setLineHeightPreset,
+    maxWidthPreset,
+    setMaxWidthPreset,
+  } = useReaderPreferences();
 
-  useEffect(() => {
-    localStorage.setItem('verbum_font_family', fontFamily);
-  }, [fontFamily]);
+  // Current passage, chapter loading (primary + parallel), pre-warming
+  // and reading focus (selected verse / scroll target)
+  const {
+    currentBook,
+    currentChapter,
+    currentVersion,
+    setCurrentVersion,
+    verses,
+    parallelVerses,
+    selectedVerse,
+    setSelectedVerse,
+    targetVerseToScroll,
+    setTargetVerseToScroll,
+    navigateChapter,
+    selectPassage,
+  } = usePassageNavigation(books, parallelMode, secondaryVersion);
 
-  useEffect(() => {
-    localStorage.setItem('verbum_line_height', lineHeightPreset);
-  }, [lineHeightPreset]);
-
-  useEffect(() => {
-    localStorage.setItem('verbum_max_width', maxWidthPreset);
-  }, [maxWidthPreset]);
-
-  useEffect(() => {
-    localStorage.setItem('verbum_sidebar_expanded', isSidebarExpanded.toString());
-  }, [isSidebarExpanded]);
-
-  useEffect(() => {
-    localStorage.setItem('verbum_hide_topbar', hideTopBar.toString());
-  }, [hideTopBar]);
-
-  useEffect(() => {
-    localStorage.setItem('verbum_parallel_mode', parallelMode.toString());
-  }, [parallelMode]);
+  // Bookmarks scoped to the chapter currently open
+  const { bookmarkedVerses, toggleBookmark } = useBookmarks(currentBook, currentChapter);
 
   useEffect(() => {
     localStorage.setItem('verbum_secondary_version', secondaryVersion);
   }, [secondaryVersion]);
-
-  useEffect(() => {
-    localStorage.setItem('verbum_bookmarks', JSON.stringify(bookmarks));
-  }, [bookmarks]);
 
   // Initial Load: Versions & Books
   useEffect(() => {
@@ -178,15 +137,6 @@ export function App() {
         const [vers, bks] = await Promise.all([fetchVersions(), fetchBooks()]);
         setVersions(vers);
         setBooks(bks);
-
-        const savedBookId = parseInt(localStorage.getItem('verbum_book_id') || '6', 10);
-        const savedChapter = parseInt(localStorage.getItem('verbum_chapter') || '15', 10);
-        const savedVersion = localStorage.getItem('verbum_version') || 'rv1909';
-
-        const initialBook = bks.find((b) => b.id === savedBookId) || bks[0] || null;
-        setCurrentBook(initialBook);
-        setCurrentChapter(savedChapter);
-        setCurrentVersion(savedVersion);
       } catch (err) {
         console.error('Initialization error:', err);
       }
@@ -194,85 +144,15 @@ export function App() {
     initApp();
   }, []);
 
-  // Load Primary Chapter Verses
-  useEffect(() => {
-    if (!currentBook) return;
-
-    localStorage.setItem('verbum_book_id', currentBook.id.toString());
-    localStorage.setItem('verbum_chapter', currentChapter.toString());
-    localStorage.setItem('verbum_version', currentVersion);
-
-    let cancelled = false;
-    fetchChapter(currentVersion, currentBook.id, currentChapter)
-      .then((data) => {
-        if (!cancelled) setVerses(data);
-      })
-      .catch((err) => console.error('Failed to load primary chapter:', err));
-    return () => {
-      cancelled = true;
-    };
-  }, [currentBook, currentChapter, currentVersion]);
-
-  // Load Parallel Secondary Verses when Parallel Mode is Active
-  useEffect(() => {
-    if (!currentBook || !parallelMode) {
-      setParallelVerses([]);
-      return;
-    }
-
-    let cancelled = false;
-    fetchChapter(secondaryVersion, currentBook.id, currentChapter)
-      .then((data) => {
-        if (!cancelled) setParallelVerses(data);
-      })
-      .catch((err) => console.error('Failed to load parallel chapter:', err));
-    return () => {
-      cancelled = true;
-    };
-  }, [currentBook, currentChapter, secondaryVersion, parallelMode]);
-
-  // Warm adjacent chapters so next/prev navigation is instant
-  useEffect(() => {
-    if (!currentBook) return;
-    const neighbors = [currentChapter - 1, currentChapter + 1].filter(
-      (ch) => ch >= 1 && ch <= currentBook.total_chapters
-    );
-    for (const ch of neighbors) {
-      void fetchChapter(currentVersion, currentBook.id, ch);
-      if (parallelMode) {
-        void fetchChapter(secondaryVersion, currentBook.id, ch);
-      }
-    }
-  }, [currentBook, currentChapter, currentVersion, parallelMode, secondaryVersion]);
-
-  const handleNavigateChapter = useCallback(
-    (delta: number) => {
-      if (!currentBook) return;
-      const target = currentChapter + delta;
-      if (target >= 1 && target <= currentBook.total_chapters) {
-        setCurrentChapter(target);
-        setSelectedVerse(1);
-        setTargetVerseToScroll(1);
-      }
+  const handleSelectPassage = useCallback(
+    (book: Book, chapter: number, verse?: number) => {
+      selectPassage(book, chapter, verse);
+      setIsBookPickerOpen(false);
+      setIsCommandPaletteOpen(false);
+      setActiveView('reader');
     },
-    [currentBook, currentChapter]
+    [selectPassage]
   );
-
-  const handleSelectPassage = useCallback((book: Book, chapter: number, verse?: number) => {
-    setCurrentBook(book);
-    setCurrentChapter(chapter);
-    setSelectedVerse(verse || 1);
-    setTargetVerseToScroll(verse || 1);
-    setIsBookPickerOpen(false);
-    setIsCommandPaletteOpen(false);
-    setActiveView('reader');
-  }, []);
-
-  const handleToggleBookmark = useCallback((verseNum: number) => {
-    setBookmarks((prev) =>
-      prev.includes(verseNum) ? prev.filter((v) => v !== verseNum) : [...prev, verseNum]
-    );
-  }, []);
 
   const handleProfundizarAI = useCallback(
     (selectedText: string, verseNum: number) => {
@@ -323,7 +203,11 @@ export function App() {
     setCompareVerseNum(vNum);
   }, []);
 
-  const handleSearchWord = useCallback(() => {
+  // Single entry point for opening the palette: accepts an optional seed so
+  // the searched word (from a verse or a text selection) arrives pre-typed.
+  // Guard against onClick handlers leaking their MouseEvent as the argument
+  const openCommandPalette = useCallback((seed?: string) => {
+    setPaletteSeed(typeof seed === 'string' ? seed : '');
     setIsCommandPaletteOpen(true);
   }, []);
 
@@ -336,7 +220,7 @@ export function App() {
     setActiveConceptSlug(null);
     setActiveAIRequest(null);
     setCompareVerseNum(null);
-  }, []);
+  }, [setSelectedVerse]);
 
   // Global Keyboard Shortcuts (Ctrl+K, J, K, P, ←, →, Esc)
   useEffect(() => {
@@ -347,7 +231,7 @@ export function App() {
       // Command Palette (Ctrl+K or Ctrl+F)
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'f')) {
         e.preventDefault();
-        setIsCommandPaletteOpen(true);
+        openCommandPalette();
         return;
       }
 
@@ -375,10 +259,10 @@ export function App() {
       // Chapter navigation (Alt+Arrow or Arrow when not in input)
       if (e.altKey && e.key === 'ArrowLeft' && activeView === 'reader') {
         e.preventDefault();
-        handleNavigateChapter(-1);
+        navigateChapter(-1);
       } else if (e.altKey && e.key === 'ArrowRight' && activeView === 'reader') {
         e.preventDefault();
-        handleNavigateChapter(1);
+        navigateChapter(1);
       }
 
       // Verse focus navigation (J: next verse, K: previous verse)
@@ -414,7 +298,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses.length, handleNavigateChapter]);
+  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses.length, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -429,7 +313,7 @@ export function App() {
           currentVersion={currentVersion}
           versions={versions}
           onOpenBookPicker={() => setIsBookPickerOpen(true)}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenCommandPalette={openCommandPalette}
           onSelectVersion={setCurrentVersion}
           parallelMode={parallelMode}
           onToggleParallelMode={() => setParallelMode((prev) => !prev)}
@@ -459,7 +343,7 @@ export function App() {
           onToggleExpand={() => setIsSidebarExpanded((prev) => !prev)}
           activeView={activeView}
           onSelectView={(view) => setActiveView(view)}
-          onTriggerSearch={() => setIsCommandPaletteOpen(true)}
+          onTriggerSearch={openCommandPalette}
           hideTopBar={hideTopBar}
           onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
           onGoHome={handleGoHome}
@@ -488,7 +372,7 @@ export function App() {
 
               <button
                 className="icon-btn"
-                onClick={() => setIsCommandPaletteOpen(true)}
+                onClick={() => openCommandPalette()}
                 title="Buscar en la Biblia (Ctrl+K)"
               >
                 <Search size={14} />
@@ -508,7 +392,6 @@ export function App() {
             <BibleReader
               currentBook={currentBook}
               currentChapter={currentChapter}
-              currentVersion={currentVersion}
               versionShortName={primaryVersionObj?.short_name || 'RV1909'}
               verses={verses}
               parallelVerses={parallelVerses}
@@ -520,12 +403,12 @@ export function App() {
               maxWidthPreset={maxWidthPreset}
               selectedVerse={selectedVerse}
               onSelectVerse={setSelectedVerse}
-              bookmarks={bookmarks}
-              onToggleBookmark={handleToggleBookmark}
+              bookmarkedVerses={bookmarkedVerses}
+              onToggleBookmark={toggleBookmark}
               onSelectConcept={handleSelectConcept}
               onCompareVerse={handleCompareVerse}
-              onSearchWord={handleSearchWord}
-              onNavigateChapter={handleNavigateChapter}
+              onSearchWord={openCommandPalette}
+              onNavigateChapter={navigateChapter}
               targetVerseToScroll={targetVerseToScroll}
               onOpenVersionLibrary={handleOpenVersionLibrary}
             />
@@ -588,6 +471,7 @@ export function App() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
+        initialQuery={paletteSeed}
         books={books}
         versions={versions}
         currentVersion={currentVersion}
@@ -624,7 +508,7 @@ export function App() {
       {activeView === 'reader' && (
         <TextSelectionToolbar
           onProfundizarAI={handleProfundizarAI}
-          onSearchSelection={handleSearchWord}
+          onSearchSelection={openCommandPalette}
           onCompareVerse={handleCompareVerse}
           bookName={currentBook?.name_es || ''}
           chapter={currentChapter}

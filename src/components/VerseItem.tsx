@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { VerseWithStudy } from '../types';
+import { VerseWithStudy, ConceptOccurrenceBadge } from '../types';
 import { Bookmark, Copy, SplitSquareVertical, Sparkles, Search, Check } from 'lucide-react';
+
+export interface ConceptTester {
+  concept: ConceptOccurrenceBadge;
+  tester: RegExp;
+}
 
 interface VerseItemProps {
   verse: VerseWithStudy;
@@ -15,6 +20,8 @@ interface VerseItemProps {
   onCompareVerse: (verseNum: number) => void;
   onSearchWord: (word: string) => void;
   onFocusVerse: (verseNum: number) => void;
+  /** Pre-compiled regex testers for the chapter's concepts (shared across verses) */
+  chapterTesters: ConceptTester[];
 }
 
 const VerseItemInner: React.FC<VerseItemProps> = ({
@@ -30,6 +37,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
   onCompareVerse,
   onSearchWord,
   onFocusVerse,
+  chapterTesters,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
@@ -73,34 +81,28 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
   const interactiveText = useMemo(() => {
     const textToParse = mainText;
 
-    if (!verse.concepts || verse.concepts.length === 0) {
+    if (!verse.concepts || verse.concepts.length === 0 || chapterTesters.length === 0) {
       return <span>{textToParse}</span>;
     }
 
-    const testers = verse.concepts
-      .filter((c) => c.word_pattern)
-      .map((c) => {
-        try {
-          return { concept: c, tester: new RegExp(`^(${c.word_pattern})$`, 'i') };
-        } catch {
-          return null;
-        }
-      })
-      .filter((entry): entry is { concept: (typeof verse.concepts)[number]; tester: RegExp } => entry !== null);
+    // Only use testers relevant to this verse's concepts
+    const relevantTesters = chapterTesters.filter((t) =>
+      verse.concepts.some((c) => c.concept_id === t.concept.concept_id)
+    );
 
-    if (testers.length === 0) {
+    if (relevantTesters.length === 0) {
       return <span>{textToParse}</span>;
     }
 
     try {
-      const combined = testers.map((t) => t.concept.word_pattern).join('|');
+      const combined = relevantTesters.map((t) => t.concept.word_pattern).join('|');
       const regex = new RegExp(`(${combined})`, 'gi');
       const parts = textToParse.split(regex);
 
       return (
         <span>
           {parts.map((part, idx) => {
-            const matched = testers.find((t) => t.tester.test(part));
+            const matched = relevantTesters.find((t) => t.tester.test(part));
             if (matched) {
               return (
                 <span
@@ -125,7 +127,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
     } catch {
       return <span>{textToParse}</span>;
     }
-  }, [mainText, verse.concepts, onSelectConcept]);
+  }, [mainText, verse.concepts, onSelectConcept, chapterTesters]);
 
   return (
     <div

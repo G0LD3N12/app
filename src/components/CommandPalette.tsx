@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Book, BibleVersion, SearchHit } from '../types';
-import { searchBible } from '../services/bibleService';
+import { searchBible, STUDY_CONCEPT_CATALOG } from '../services/bibleService';
 import { THEME_PALETTES } from '../themeDefinitions';
 import {
   Search,
@@ -16,6 +16,7 @@ import {
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
+  initialQuery?: string;
   books: Book[];
   versions: BibleVersion[];
   currentVersion: string;
@@ -37,19 +38,11 @@ interface CommandItem {
   action: () => void;
 }
 
-const STUDY_CONCEPTS = [
-  { slug: 'anaquitas', name: 'Anaquitas (Anaceos)', desc: 'Gigantes históricos de Hebrón y su tipología' },
-  { slug: 'cordero-pascual', name: 'Cordero Pascual', desc: 'Sacrificio sustitutivo central y tipología de Cristo' },
-  { slug: 'arca-del-pacto', name: 'Arca del Pacto', desc: 'Trono de la presencia divina y propiciatorio' },
-  { slug: 'melquisedec', name: 'Melquisedec', desc: 'Rey de Salem y sacerdote eterno del Altísimo' },
-  { slug: 'logos-palabra', name: 'El Verbo (Logos)', desc: 'La Palabra divina encarnada en Juan 1:1' },
-  { slug: 'serpiente-de-bronce', name: 'Serpiente de Bronce', desc: 'Símbolo de juicio levantado en el desierto' },
-];
-
 function parseScriptureRef(
   raw: string,
   books: Book[]
 ): { book: Book; chapter: number; verse?: number } | null {
+  if (typeof raw !== 'string') return null;
   const clean = raw.trim().toLowerCase();
   if (!clean) return null;
 
@@ -76,6 +69,7 @@ function parseScriptureRef(
 export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
   isOpen,
   onClose,
+  initialQuery,
   books,
   versions,
   currentVersion,
@@ -92,15 +86,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input when opened
+  // Focus input when opened, seeding the query when the palette was
+  // triggered from a selected word or verse
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
+      setQuery(initialQuery ?? '');
       setSearchResults([]);
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [isOpen]);
+  }, [isOpen, initialQuery]);
 
   // Handle Search Query with Debounce
   useEffect(() => {
@@ -164,7 +159,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
       });
     }
 
-    STUDY_CONCEPTS.filter(
+    STUDY_CONCEPT_CATALOG.filter(
       (c) =>
         !query ||
         c.name.toLowerCase().includes(query.toLowerCase()) ||
