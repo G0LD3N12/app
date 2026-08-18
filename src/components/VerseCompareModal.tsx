@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Book, BibleVersion } from '../types';
 import { fetchChapter } from '../services/bibleService';
 import { X, Copy, Check, SplitSquareVertical } from 'lucide-react';
+import { showToast } from './ToastHost';
 
 interface VerseCompareModalProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
 
     navigator.clipboard.writeText(textToCopy);
     setCopiedAll(true);
+    showToast(`Comparación copiada: ${book.name_es} ${chapter}:${verseNum}`);
     setTimeout(() => setCopiedAll(false), 2000);
   }, [comparisons, book, chapter, verseNum]);
 
@@ -74,6 +76,7 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
     const text = `«${c.text}» — ${book.name_es} ${chapter}:${verseNum} (${c.version.short_name})`;
     navigator.clipboard.writeText(text);
     setCopiedSingle(c.version.id);
+    showToast(`Copiado [${c.version.short_name}] ${book.name_es} ${chapter}:${verseNum}`);
     setTimeout(() => setCopiedSingle(null), 1800);
   }, [book, chapter, verseNum]);
 
@@ -81,7 +84,7 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
 
   return (
     <div className="verse-compare-backdrop" onClick={onClose}>
-      <div className="verse-compare-card" onClick={(e) => e.stopPropagation()}>
+      <div className="verse-compare-card glass-surface" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="verse-compare-header">
           <div className="verse-compare-title-group">
@@ -90,7 +93,6 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
               Comparar: {book.name_es} {chapter}:{verseNum}
             </h3>
           </div>
-
           <div className="verse-compare-actions">
             <button
               className="verse-compare-copy-all-btn"
@@ -133,8 +135,8 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
                   >
                     {copiedSingle === c.version.id ? (
                       <>
-                        <Check size={12} color="#22c55e" />
-                        <span style={{ color: '#22c55e' }}>Copiado</span>
+                        <Check size={12} color="var(--accent-gold)" />
+                        <span style={{ color: 'var(--accent-gold)' }}>Copiado</span>
                       </>
                     ) : (
                       <>

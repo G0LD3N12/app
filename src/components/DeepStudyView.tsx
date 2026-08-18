@@ -20,6 +20,7 @@ import {
   Info,
   X,
 } from 'lucide-react';
+import { showToast } from './ToastHost';
 
 interface DeepStudyViewProps {
   initialResult: StudyExegesisResult;
@@ -78,7 +79,8 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
     }
     navigator.clipboard.writeText(md);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    showToast('Estudio copiado al portapapeles');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -105,7 +107,7 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
             )}
 
             <button className="icon-btn" onClick={handleCopyStudy} title="Copiar estudio en formato Markdown">
-              {copied ? <Check size={16} color="#22c55e" /> : <Copy size={16} />}
+              {copied ? <Check size={16} color="var(--accent-gold)" /> : <Copy size={16} />}
             </button>
           </div>
         </header>

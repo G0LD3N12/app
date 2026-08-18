@@ -19,10 +19,7 @@ interface BibleReaderProps {
   selectedVerse: number | null;
   onSelectVerse: (vNum: number) => void;
   bookmarkedVerses: Set<number>;
-  onToggleBookmark: (verseNum: number) => void;
   onSelectConcept: (slug: string) => void;
-  onCompareVerse: (verseNum: number) => void;
-  onSearchWord: (word: string) => void;
   onNavigateChapter: (delta: number) => void;
   targetVerseToScroll: number | null;
   onOpenVersionLibrary?: (target: 'primary' | 'secondary') => void;
@@ -43,10 +40,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   selectedVerse,
   onSelectVerse,
   bookmarkedVerses,
-  onToggleBookmark,
   onSelectConcept,
-  onCompareVerse,
-  onSearchWord,
   onNavigateChapter,
   targetVerseToScroll,
   onOpenVersionLibrary,
@@ -101,22 +95,6 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
       );
     }
   }, [isPlayingThisChapter, playbackState, pause, resume, currentBook, verses, playChapter, currentChapter, versionShortName, selectedVerse]);
-
-  const handleListenFromVerse = useCallback((verseNum: number) => {
-    if (!currentBook || verses.length === 0) return;
-    const verseList = verses.map((v) => ({
-      verseNumber: v.verse,
-      text: v.text,
-    }));
-    playChapter(
-      verseList,
-      currentBook.id,
-      currentBook.name_es,
-      currentChapter,
-      versionShortName,
-      verseNum
-    );
-  }, [currentBook, verses, playChapter, currentChapter, versionShortName]);
 
   // Pre-compile concept regex testers once per chapter (shared across all verses)
   const chapterTesters = useMemo<ConceptTester[]>(() => {
@@ -241,19 +219,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
               <VerseItem
                 key={v.id}
                 verse={v}
-                bookName={currentBook?.name_es || ''}
-                versionShortName={versionShortName}
                 fontSize={fontSize}
                 lineHeight={getLineHeightMultiplier()}
                 isSelected={selectedVerse === v.verse}
                 isBookmarked={bookmarkedVerses.has(v.verse)}
                 isPlayingAudio={activeVerseNumber === v.verse}
-                onToggleBookmark={onToggleBookmark}
                 onSelectConcept={onSelectConcept}
-                onCompareVerse={onCompareVerse}
-                onSearchWord={onSearchWord}
                 onFocusVerse={onSelectVerse}
-                onListenVerse={handleListenFromVerse}
                 chapterTesters={chapterTesters}
               />
             ))}
@@ -294,19 +266,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                     <div className="parallel-col primary">
                       <VerseItem
                         verse={v}
-                        bookName={currentBook?.name_es || ''}
-                        versionShortName={versionShortName}
                         fontSize={fontSize - 1}
                         lineHeight={getLineHeightMultiplier()}
                         isSelected={selectedVerse === v.verse}
                         isBookmarked={bookmarkedVerses.has(v.verse)}
                         isPlayingAudio={activeVerseNumber === v.verse}
-                        onToggleBookmark={onToggleBookmark}
                         onSelectConcept={onSelectConcept}
-                        onCompareVerse={onCompareVerse}
-                        onSearchWord={onSearchWord}
                         onFocusVerse={onSelectVerse}
-                        onListenVerse={handleListenFromVerse}
                         chapterTesters={chapterTesters}
                       />
                     </div>

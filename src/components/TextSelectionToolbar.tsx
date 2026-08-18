@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sparkles, Copy, Search, SplitSquareVertical, Check, Volume2 } from 'lucide-react';
+import { Sparkles, Copy, Search, SplitSquareVertical, Volume2, Bookmark } from 'lucide-react';
 import { useAudioManager } from '../context/AudioManagerContext';
+import { showToast } from './ToastHost';
 
 interface TextSelectionToolbarProps {
   onProfundizarAI: (selectedText: string, verseNum: number) => void;
   onSearchSelection: (selectedText: string) => void;
   onCompareVerse: (verseNum: number) => void;
+  onToggleBookmark: (verseNum: number) => void;
+  bookmarkedVerses: Set<number>;
   bookName: string;
   chapter: number;
 }
@@ -14,6 +17,8 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
   onProfundizarAI,
   onSearchSelection,
   onCompareVerse,
+  onToggleBookmark,
+  bookmarkedVerses,
   bookName,
   chapter,
 }) => {
@@ -21,7 +26,6 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
   const [position, setPosition] = useState<{ x: number; y: number; isBelow: boolean } | null>(null);
   const [selectedText, setSelectedText] = useState<string>('');
   const [sourceVerseNum, setSourceVerseNum] = useState<number>(1);
-  const [copied, setCopied] = useState<boolean>(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -116,12 +120,16 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
     e.stopPropagation();
     const quote = `«${selectedText}» — ${bookName} ${chapter}:${sourceVerseNum}`;
     navigator.clipboard.writeText(quote);
-    setCopied(true);
-    setTimeout(() => {
-      setCopied(false);
-      window.getSelection()?.removeAllRanges();
-      setPosition(null);
-    }, 1200);
+    showToast(`Copiado ${bookName} ${chapter}:${sourceVerseNum}`);
+    window.getSelection()?.removeAllRanges();
+    setPosition(null);
+  };
+
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleBookmark(sourceVerseNum);
+    const willBookmark = !bookmarkedVerses.has(sourceVerseNum);
+    showToast(willBookmark ? `Marcador en ${bookName} ${chapter}:${sourceVerseNum}` : 'Marcador quitado');
   };
 
   const handleListen = (e: React.MouseEvent) => {
@@ -172,8 +180,17 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
       </button>
 
       <button className="selection-tool-btn" onClick={handleCopy} title="Copiar selección">
-        {copied ? <Check size={13} color="#22c55e" /> : <Copy size={13} />}
-        <span>{copied ? 'Copiado' : 'Copiar'}</span>
+        <Copy size={13} />
+        <span>Copiar</span>
+      </button>
+
+      <button
+        className={`selection-tool-btn ${bookmarkedVerses.has(sourceVerseNum) ? 'is-active' : ''}`}
+        onClick={handleBookmark}
+        title={bookmarkedVerses.has(sourceVerseNum) ? 'Quitar marcador' : 'Guardar marcador'}
+      >
+        <Bookmark size={13} fill={bookmarkedVerses.has(sourceVerseNum) ? 'currentColor' : 'none'} />
+        <span>{bookmarkedVerses.has(sourceVerseNum) ? 'Guardado' : 'Marcar'}</span>
       </button>
 
       <button className="selection-tool-btn" onClick={handleSearch} title="Buscar en toda la Biblia">
