@@ -11,6 +11,7 @@ import {
   Settings,
   CornerDownLeft,
   X,
+  Clock,
 } from 'lucide-react';
 
 interface CommandPaletteProps {
@@ -31,7 +32,7 @@ interface CommandPaletteProps {
 
 interface CommandItem {
   id: string;
-  category: 'Escritura' | 'Palabra' | 'Concepto' | 'Comandos';
+  category: 'Recientes' | 'Escritura' | 'Palabra' | 'Concepto' | 'Comandos';
   title: string;
   subtitle?: string;
   icon: React.ElementType;
@@ -124,6 +125,35 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
 
   const items = useMemo(() => {
     const next: CommandItem[] = [];
+
+    // 0. Recientes (when query is empty)
+    if (!query.trim()) {
+      try {
+        const stored = localStorage.getItem('verbum_recent_passages');
+        if (stored) {
+          const recents: { bookId: number; bookName: string; chapter: number; verse?: number }[] = JSON.parse(stored);
+          recents.slice(0, 4).forEach((r, idx) => {
+            const b = books.find((x) => x.id === r.bookId);
+            if (b) {
+              next.push({
+                id: `recent-${idx}`,
+                category: 'Recientes',
+                title: `${r.bookName} ${r.chapter}${r.verse ? `:${r.verse}` : ''}`,
+                subtitle: 'Lectura reciente',
+                icon: Clock,
+                action: () => {
+                  onSelectPassage(b, r.chapter, r.verse);
+                  onClose();
+                },
+              });
+            }
+          });
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+
     const parsedRef = parseScriptureRef(query, books);
 
     if (parsedRef) {
@@ -283,7 +313,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
   if (!isOpen) return null;
 
   // Group items by category
-  const categories: Array<'Escritura' | 'Palabra' | 'Concepto' | 'Comandos'> = [
+  const categories: Array<'Recientes' | 'Escritura' | 'Palabra' | 'Concepto' | 'Comandos'> = [
+    'Recientes',
     'Escritura',
     'Palabra',
     'Concepto',

@@ -23,6 +23,7 @@ interface BibleReaderProps {
   onNavigateChapter: (delta: number) => void;
   targetVerseToScroll: number | null;
   onOpenVersionLibrary?: (target: 'primary' | 'secondary') => void;
+  isLoading?: boolean;
 }
 
 export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
@@ -44,6 +45,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   onNavigateChapter,
   targetVerseToScroll,
   onOpenVersionLibrary,
+  isLoading,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const {
@@ -133,12 +135,12 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
     return 1.75; // comfortable
   };
 
-  // Max width container class
+  // Max width container class (optimal measure 65-72ch)
   const getMaxWidthPx = (): string => {
-    if (parallelMode) return '1180px';
-    if (maxWidthPreset === 'wide') return '880px';
-    if (maxWidthPreset === 'expanded') return '1040px';
-    return '800px'; // standard
+    if (parallelMode) return '130ch';
+    if (maxWidthPreset === 'wide') return '78ch';
+    if (maxWidthPreset === 'expanded') return '92ch';
+    return '68ch'; // standard optimal editorial measure
   };
 
   // Font family CSS rule
@@ -167,52 +169,66 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
         {/* Tighter, More Elegant Chapter Header (Document feel) */}
         <header className="chapter-document-header">
           <h1 className="chapter-document-title">
-            {currentBook ? `${currentBook.name_es.toUpperCase()} ${currentChapter}` : 'CARGANDO...'}
+            {currentBook ? `${currentBook.name_es.toUpperCase()} ${currentChapter}` : ''}
           </h1>
-          <div className="chapter-document-meta">
-            <span>
-              {currentBook?.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento'}
-            </span>
-            <span className="meta-separator">·</span>
-            <span>{verses.length} versículos</span>
-            <span className="meta-separator">·</span>
-            <button
-              className="meta-version-badge-btn"
-              onClick={() => onOpenVersionLibrary?.('primary')}
-              title="Abrir biblioteca para traducción principal (Columna 1)"
-            >
-              {versionShortName}
-            </button>
-            {parallelMode && secondaryVersionShortName && (
-              <>
-                <span className="meta-separator">⇄</span>
-                <button
-                  className="meta-version-badge-btn"
-                  onClick={() => onOpenVersionLibrary?.('secondary')}
-                  title="Abrir biblioteca para traducción secundaria (Columna 2)"
-                >
-                  {secondaryVersionShortName}
-                </button>
-              </>
-            )}
-            <span className="meta-separator">·</span>
-            <button
-              className={`meta-play-chapter-btn ${isPlayingThisChapter ? 'active' : ''}`}
-              onClick={handleToggleListenChapter}
-              title={isPlayingThisChapter ? 'Pausar o reanudar lectura de audio' : 'Reproducir capítulo completo'}
-              aria-label={isPlayingThisChapter ? 'Pausar lectura' : 'Reproducir capítulo'}
-            >
-              {isPlayingThisChapter && playbackState === 'playing' ? (
-                <Pause size={9} fill="currentColor" />
-              ) : (
-                <Play size={9} fill="currentColor" style={{ marginLeft: '1px' }} />
+          {currentBook && (
+            <div className="chapter-document-meta">
+              <span>
+                {currentBook.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento'}
+              </span>
+              <span className="meta-separator">·</span>
+              <span>{verses.length} versículos</span>
+              <span className="meta-separator">·</span>
+              <button
+                className="meta-version-badge-btn"
+                onClick={() => onOpenVersionLibrary?.('primary')}
+                title="Abrir biblioteca para traducción principal (Columna 1)"
+              >
+                {versionShortName}
+              </button>
+              {parallelMode && secondaryVersionShortName && (
+                <>
+                  <span className="meta-separator">⇄</span>
+                  <button
+                    className="meta-version-badge-btn"
+                    onClick={() => onOpenVersionLibrary?.('secondary')}
+                    title="Abrir biblioteca para traducción secundaria (Columna 2)"
+                  >
+                    {secondaryVersionShortName}
+                  </button>
+                </>
               )}
-            </button>
-          </div>
+              <span className="meta-separator">·</span>
+              <button
+                className={`meta-play-chapter-btn ${isPlayingThisChapter ? 'active' : ''}`}
+                onClick={handleToggleListenChapter}
+                title={isPlayingThisChapter ? 'Pausar o reanudar lectura de audio' : 'Reproducir capítulo completo'}
+                aria-label={isPlayingThisChapter ? 'Pausar lectura' : 'Reproducir capítulo'}
+              >
+                {isPlayingThisChapter && playbackState === 'playing' ? (
+                  <Pause size={9} fill="currentColor" />
+                ) : (
+                  <Play size={9} fill="currentColor" style={{ marginLeft: '1px' }} />
+                )}
+              </button>
+            </div>
+          )}
         </header>
 
-        {/* Verses Area: Single Column or Parallel Split View */}
-        {!parallelMode ? (
+        {/* Verses Area: Loading Skeleton or Single Column / Parallel Split View */}
+        {(!currentBook || (isLoading && verses.length === 0)) ? (
+          <div className="reader-skeleton-container" aria-label="Cargando capítulo...">
+            <div className="reader-skeleton-line title" />
+            <div className="reader-skeleton-line meta" />
+            <div className="reader-skeleton-divider" />
+            <div className="reader-skeleton-line w-95" />
+            <div className="reader-skeleton-line w-85" />
+            <div className="reader-skeleton-line w-90" />
+            <div className="reader-skeleton-line w-70" />
+            <div className="reader-skeleton-line w-88" />
+            <div className="reader-skeleton-line w-60" />
+          </div>
+        ) : !parallelMode ? (
           /* Single Column Editorial Document */
           <div className="verses-container">
             {verses.map((v) => (

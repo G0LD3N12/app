@@ -20,6 +20,8 @@ import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BookPickerModal } from './components/BookPickerModal';
 import { VerseCompareModal } from './components/VerseCompareModal';
 import { ToastHost } from './components/ToastHost';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { useAudioManager } from './context/AudioManagerContext';
 import { usePersistentBoolean } from './hooks/usePersistentBoolean';
 import { useReaderPreferences } from './hooks/useReaderPreferences';
 import { useBookmarks } from './hooks/useBookmarks';
@@ -62,7 +64,10 @@ export function App() {
   const [paletteSeed, setPaletteSeed] = useState<string>('');
   const [isVersionLibraryOpen, setIsVersionLibraryOpen] = useState<boolean>(false);
   const [versionLibraryTarget, setVersionLibraryTarget] = useState<'primary' | 'secondary'>('primary');
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState<boolean>(false);
   const [compareVerseNum, setCompareVerseNum] = useState<number | null>(null);
+
+  const { playbackState, pause, resume, playChapter, queue } = useAudioManager();
 
   const handleOpenVersionLibrary = (target: 'primary' | 'secondary' = 'primary') => {
     setVersionLibraryTarget(target);
@@ -123,6 +128,7 @@ export function App() {
     setTargetVerseToScroll,
     navigateChapter,
     selectPassage,
+    isLoading,
   } = usePassageNavigation(books, parallelMode, secondaryVersion);
 
   // Bookmarks scoped to the chapter currently open
@@ -288,8 +294,50 @@ export function App() {
         }
       }
 
+      // Shortcuts Help Modal (?)
+      if (e.key === '?' && !isInputActive && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setIsShortcutsModalOpen((prev) => !prev);
+        return;
+      }
+
+      // Quick Search (/)
+      if (e.key === '/' && !isInputActive && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        openCommandPalette();
+        return;
+      }
+
+      // Toggle Bookmark (B)
+      if (e.key.toLowerCase() === 'b' && !isInputActive && !e.ctrlKey && !e.metaKey && !e.altKey && activeView === 'reader') {
+        e.preventDefault();
+        toggleBookmark(selectedVerse || 1);
+        return;
+      }
+
+      // Toggle Audio Play/Pause (Space) in reader
+      if (e.key === ' ' && !isInputActive && activeView === 'reader') {
+        e.preventDefault();
+        if (playbackState === 'playing') {
+          pause();
+        } else if (playbackState === 'paused') {
+          resume();
+        } else if (currentBook && verses.length > 0) {
+          playChapter(
+            verses.map((v) => ({ verseNumber: v.verse, text: v.text })),
+            currentBook.id,
+            currentBook.name_es,
+            currentChapter,
+            currentVersion,
+            selectedVerse || 1
+          );
+        }
+        return;
+      }
+
       // Escape key to close modals
       if (e.key === 'Escape') {
+        if (isShortcutsModalOpen) setIsShortcutsModalOpen(false);
         if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
         if (isBookPickerOpen) setIsBookPickerOpen(false);
         if (isVersionLibraryOpen) setIsVersionLibraryOpen(false);
@@ -300,7 +348,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses.length, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse]);
+  }, [activeView, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, toggleBookmark, pause, resume, playChapter]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -412,6 +460,7 @@ export function App() {
               onNavigateChapter={navigateChapter}
               targetVerseToScroll={targetVerseToScroll}
               onOpenVersionLibrary={handleOpenVersionLibrary}
+              isLoading={isLoading}
             />
           )}
 
@@ -527,6 +576,12 @@ export function App() {
       {/* Global audio player: mounted at the root so `position: fixed` keeps
           it pinned to the bottom of the window in every view and scroll state */}
       <AudioPlayerBar />
+      {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
       <ToastHost />
     </div>
   );

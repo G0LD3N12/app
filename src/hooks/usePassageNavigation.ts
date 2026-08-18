@@ -2,6 +2,22 @@ import { useCallback, useEffect, useState } from 'react';
 import { Book, VerseWithStudy } from '../types';
 import { fetchChapter } from '../services/bibleService';
 
+export interface RecentPassage {
+  bookId: number;
+  bookName: string;
+  chapter: number;
+  verse?: number;
+  timestamp: number;
+}
+
+const performWithTransition = (fn: () => void) => {
+  if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+    (document as any).startViewTransition(fn);
+  } else {
+    fn();
+  }
+};
+
 /**
  * Current passage (book / chapter / version), verse loading for the
  * primary and parallel columns, adjacent-chapter pre-warming and
@@ -19,6 +35,7 @@ export function usePassageNavigation(
   const [parallelVerses, setParallelVerses] = useState<VerseWithStudy[]>([]);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [targetVerseToScroll, setTargetVerseToScroll] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Resolve the initial passage from localStorage once the book
   // catalog has been loaded
@@ -32,24 +49,49 @@ export function usePassageNavigation(
     setCurrentVersion(savedVersion);
   }, [books, currentBook]);
 
-  // Persist current passage
+  // Persist current passage and push to recent passages list
   useEffect(() => {
     if (!currentBook) return;
     localStorage.setItem('verbum_book_id', currentBook.id.toString());
     localStorage.setItem('verbum_chapter', currentChapter.toString());
     localStorage.setItem('verbum_version', currentVersion);
-  }, [currentBook, currentChapter, currentVersion]);
+
+    try {
+      const stored = localStorage.getItem('verbum_recent_passages');
+      let recents: RecentPassage[] = stored ? JSON.parse(stored) : [];
+      recents = recents.filter(
+        (r) => !(r.bookId === currentBook.id && r.chapter === currentChapter)
+      );
+      recents.unshift({
+        bookId: currentBook.id,
+        bookName: currentBook.name_es,
+        chapter: currentChapter,
+        verse: selectedVerse || 1,
+        timestamp: Date.now(),
+      });
+      localStorage.setItem('verbum_recent_passages', JSON.stringify(recents.slice(0, 10)));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [currentBook, currentChapter, currentVersion, selectedVerse]);
 
   // Load Primary Chapter Verses
   useEffect(() => {
     if (!currentBook) return;
 
     let cancelled = false;
+    setIsLoading(true);
     fetchChapter(currentVersion, currentBook.id, currentChapter)
       .then((data) => {
-        if (!cancelled) setVerses(data);
+        if (!cancelled) {
+          setVerses(data);
+          setIsLoading(false);
+        }
       })
-      .catch((err) => console.error('Failed to load primary chapter:', err));
+      .catch((err) => {
+        console.error('Failed to load primary chapter:', err);
+        if (!cancelled) setIsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -92,19 +134,23 @@ export function usePassageNavigation(
       if (!currentBook) return;
       const target = currentChapter + delta;
       if (target >= 1 && target <= currentBook.total_chapters) {
-        setCurrentChapter(target);
-        setSelectedVerse(1);
-        setTargetVerseToScroll(1);
+        performWithTransition(() => {
+          setCurrentChapter(target);
+          setSelectedVerse(1);
+          setTargetVerseToScroll(1);
+        });
       }
     },
     [currentBook, currentChapter]
   );
 
   const selectPassage = useCallback((book: Book, chapter: number, verse?: number) => {
-    setCurrentBook(book);
-    setCurrentChapter(chapter);
-    setSelectedVerse(verse || 1);
-    setTargetVerseToScroll(verse || 1);
+    performWithTransition(() => {
+      setCurrentBook(book);
+      setCurrentChapter(chapter);
+      setSelectedVerse(verse || 1);
+      setTargetVerseToScroll(verse || 1);
+    });
   }, []);
 
   return {
@@ -120,5 +166,6 @@ export function usePassageNavigation(
     setTargetVerseToScroll,
     navigateChapter,
     selectPassage,
+    isLoading,
   };
 }
