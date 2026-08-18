@@ -21,7 +21,6 @@ import { BookPickerModal } from './components/BookPickerModal';
 import { VerseCompareModal } from './components/VerseCompareModal';
 import { ToastHost } from './components/ToastHost';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
-import { AtmosphereCanvas } from './components/AtmosphereCanvas';
 import { useAudioManager } from './context/AudioManagerContext';
 import { usePersistentBoolean } from './hooks/usePersistentBoolean';
 import { useReaderPreferences } from './hooks/useReaderPreferences';
@@ -351,30 +350,12 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeView, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, toggleBookmark, pause, resume, playChapter]);
 
-  // Chrome spotlight on hover (Linear / visionOS style)
-  useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      const target = (e.target as HTMLElement)?.closest?.(
-        '.app-header, .app-sidebar, .audio-player-bar, .floating-zen-bar, .command-palette-card'
-      ) as HTMLElement | null;
-      if (target) {
-        const rect = target.getBoundingClientRect();
-        target.style.setProperty('--spotlight-x', `${e.clientX - rect.left}px`);
-        target.style.setProperty('--spotlight-y', `${e.clientY - rect.top}px`);
-      }
-    };
-    window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    return () => window.removeEventListener('pointermove', handlePointerMove);
-  }, []);
-
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
 
   return (
     <div className="app-container">
-      <div className="app-atmosphere" aria-hidden="true">
-        <AtmosphereCanvas />
-      </div>
+      <div className="app-atmosphere" aria-hidden="true" />
 
       {/* Top Header (Collapsible in Zen Mode) */}
       {!hideTopBar && (
