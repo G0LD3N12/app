@@ -230,7 +230,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
           </div>
         ) : !parallelMode ? (
           /* Single Column Editorial Document */
-          <div className="verses-container">
+          <div className={`verses-container ${((playbackState === 'playing' || playbackState === 'generating' || playbackState === 'ready') && activeVerseNumber !== null) ? 'has-active-audio' : ''}`}>
             {verses.map((v) => (
               <VerseItem
                 key={v.id}

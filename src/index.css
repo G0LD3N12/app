@@ -5448,6 +5448,76 @@ body,
   color: var(--text-muted);
 }
 
+/* =========================================================================
+   P2: AUDIO NARRATION FOCUS MODE (DIM NON-ACTIVE VERSES)
+   ========================================================================= */
+
+.verses-container.has-active-audio .verse-row-editorial {
+  opacity: 0.48;
+  filter: blur(0.2px);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s ease, transform 0.25s ease;
+}
+
+.verses-container.has-active-audio .verse-row-editorial.playing-audio {
+  opacity: 1;
+  filter: none;
+  transform: translateX(3px);
+  background-color: var(--verse-selected-bg, var(--accent-gold-soft));
+  border-left-color: var(--verse-selected-border, var(--accent-gold));
+}
+
+/* =========================================================================
+   P2: LINEAR-STYLE CHROME SPOTLIGHT ON HOVER
+   ========================================================================= */
+
+.app-header,
+.app-sidebar,
+.audio-player-bar,
+.floating-zen-bar,
+.command-palette-card {
+  --spotlight-x: -999px;
+  --spotlight-y: -999px;
+  position: relative;
+}
+
+.app-header::after,
+.app-sidebar::after,
+.audio-player-bar::after,
+.floating-zen-bar::after,
+.command-palette-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    320px circle at var(--spotlight-x) var(--spotlight-y),
+    var(--accent-gold-soft),
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 0;
+}
+
+.app-header:hover::after,
+.app-sidebar:hover::after,
+.audio-player-bar:hover::after,
+.floating-zen-bar:hover::after,
+.command-palette-card:hover::after {
+  opacity: 0.55;
+}
+
+.app-atmosphere-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.07;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
 /* Focus Visible 2026 Standards */
 button:focus-visible,
 input:focus-visible,
@@ -5460,7 +5530,8 @@ select:focus-visible {
 @media (prefers-reduced-transparency: reduce) {
   .app-atmosphere,
   .app-atmosphere::after,
-  .app-atmosphere::before {
+  .app-atmosphere::before,
+  .app-atmosphere-canvas {
     opacity: 0 !important;
     display: none !important;
   }
