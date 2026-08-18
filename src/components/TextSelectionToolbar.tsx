@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sparkles, Copy, Search, SplitSquareVertical, Check } from 'lucide-react';
+import { Sparkles, Copy, Search, SplitSquareVertical, Check, Volume2 } from 'lucide-react';
+import { useAudioManager } from '../context/AudioManagerContext';
 
 interface TextSelectionToolbarProps {
   onProfundizarAI: (selectedText: string, verseNum: number) => void;
@@ -16,6 +17,7 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
   bookName,
   chapter,
 }) => {
+  const { playSelection } = useAudioManager();
   const [position, setPosition] = useState<{ x: number; y: number; isBelow: boolean } | null>(null);
   const [selectedText, setSelectedText] = useState<string>('');
   const [sourceVerseNum, setSourceVerseNum] = useState<number>(1);
@@ -122,6 +124,13 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
     }, 1200);
   };
 
+  const handleListen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    playSelection(selectedText, `${bookName} ${chapter}:${sourceVerseNum}`);
+    window.getSelection()?.removeAllRanges();
+    setPosition(null);
+  };
+
   const handleAI = (e: React.MouseEvent) => {
     e.stopPropagation();
     onProfundizarAI(selectedText, sourceVerseNum);
@@ -157,6 +166,11 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      <button className="selection-tool-btn" onClick={handleListen} title="Escuchar texto seleccionado">
+        <Volume2 size={13} />
+        <span>Escuchar</span>
+      </button>
+
       <button className="selection-tool-btn" onClick={handleCopy} title="Copiar selección">
         {copied ? <Check size={13} color="#22c55e" /> : <Copy size={13} />}
         <span>{copied ? 'Copiado' : 'Copiar'}</span>

@@ -1,8 +1,16 @@
 import React from 'react';
-import { AppTheme, BibleVersion, AIProviderConfig } from '../types';
+import {
+  AppTheme,
+  BibleVersion,
+  AIProviderConfig,
+  ScriptureFont,
+  LineHeightPreset,
+  MaxWidthPreset,
+} from '../types';
 import { VerbumLogo } from './VerbumLogo';
 import { SettingsWindowSection } from './settings/SettingsWindowSection';
 import { SettingsAISection } from './settings/SettingsAISection';
+import { SettingsVoiceSection } from './settings/SettingsVoiceSection';
 import { SettingsTypographySection } from './settings/SettingsTypographySection';
 import { SettingsThemesSection } from './settings/SettingsThemesSection';
 import { SettingsVersionsSection } from './settings/SettingsVersionsSection';
@@ -13,6 +21,12 @@ interface SettingsViewProps {
   onSelectTheme: (theme: AppTheme) => void;
   fontSize: number;
   onChangeFontSize: (size: number) => void;
+  fontFamily: ScriptureFont;
+  onChangeFontFamily: (font: ScriptureFont) => void;
+  lineHeightPreset?: LineHeightPreset;
+  onChangeLineHeight?: (preset: LineHeightPreset) => void;
+  maxWidthPreset?: MaxWidthPreset;
+  onChangeMaxWidth?: (preset: MaxWidthPreset) => void;
   versions: BibleVersion[];
   currentVersion: string;
   onSelectDefaultVersion: (vId: string) => void;
@@ -29,6 +43,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSelectTheme,
   fontSize,
   onChangeFontSize,
+  fontFamily,
+  onChangeFontFamily,
+  lineHeightPreset,
+  onChangeLineHeight,
+  maxWidthPreset,
+  onChangeMaxWidth,
   versions,
   currentVersion,
   onSelectDefaultVersion,
@@ -58,9 +78,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onUpdateAIConfig={onUpdateAIConfig}
         />
 
+        <SettingsVoiceSection />
+
         <SettingsTypographySection
           fontSize={fontSize}
           onChangeFontSize={onChangeFontSize}
+          fontFamily={fontFamily}
+          onChangeFontFamily={onChangeFontFamily}
+          lineHeightPreset={lineHeightPreset}
+          onChangeLineHeight={onChangeLineHeight}
+          maxWidthPreset={maxWidthPreset}
+          onChangeMaxWidth={onChangeMaxWidth}
         />
 
         <SettingsThemesSection

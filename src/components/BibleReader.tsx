@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { Book, VerseWithStudy, ScriptureFont, LineHeightPreset, MaxWidthPreset } from '../types';
 import { VerseItem, ConceptTester } from './VerseItem';
-import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Play, Pause } from 'lucide-react';
+import { useAudioManager } from '../context/AudioManagerContext';
 
 interface BibleReaderProps {
   currentBook: Book | null;
@@ -51,6 +52,71 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   onOpenVersionLibrary,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const {
+    activeVerseNumber,
+    playChapter,
+    isAudioBarVisible,
+    playbackState,
+    pause,
+    resume,
+    voiceSettings,
+  } = useAudioManager();
+
+  // Auto-scroll when activeVerseNumber changes in audiobook playback
+  useEffect(() => {
+    if (activeVerseNumber !== null && activeVerseNumber > 0 && voiceSettings.autoScroll) {
+      const el = document.getElementById(`verse-${activeVerseNumber}`);
+      if (el) {
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [activeVerseNumber, voiceSettings.autoScroll]);
+
+  const isPlayingThisChapter =
+    isAudioBarVisible && (playbackState === 'playing' || playbackState === 'generating' || playbackState === 'ready');
+
+  const handleToggleListenChapter = useCallback(() => {
+    if (isPlayingThisChapter) {
+      if (playbackState === 'playing') {
+        pause();
+      } else {
+        resume();
+      }
+    } else {
+      if (!currentBook || verses.length === 0) return;
+      const verseList = verses.map((v) => ({
+        verseNumber: v.verse,
+        text: v.text,
+      }));
+      playChapter(
+        verseList,
+        currentBook.id,
+        currentBook.name_es,
+        currentChapter,
+        versionShortName,
+        selectedVerse || 1
+      );
+    }
+  }, [isPlayingThisChapter, playbackState, pause, resume, currentBook, verses, playChapter, currentChapter, versionShortName, selectedVerse]);
+
+  const handleListenFromVerse = useCallback((verseNum: number) => {
+    if (!currentBook || verses.length === 0) return;
+    const verseList = verses.map((v) => ({
+      verseNumber: v.verse,
+      text: v.text,
+    }));
+    playChapter(
+      verseList,
+      currentBook.id,
+      currentBook.name_es,
+      currentChapter,
+      versionShortName,
+      verseNum
+    );
+  }, [currentBook, verses, playChapter, currentChapter, versionShortName]);
 
   // Pre-compile concept regex testers once per chapter (shared across all verses)
   const chapterTesters = useMemo<ConceptTester[]>(() => {
@@ -101,6 +167,11 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   const getFontFamilyCSS = (): string => {
     if (fontFamily === 'crimson') return 'var(--font-crimson)';
     if (fontFamily === 'garamond') return 'var(--font-garamond)';
+    if (fontFamily === 'charter') return 'var(--font-charter)';
+    if (fontFamily === 'source-serif') return 'var(--font-source-serif)';
+    if (fontFamily === 'sf-pro') return 'var(--font-sf-pro)';
+    if (fontFamily === 'inter') return 'var(--font-inter)';
+    if (fontFamily === 'jakarta') return 'var(--font-jakarta)';
     if (fontFamily === 'sans') return 'var(--font-sans)';
     return 'var(--font-serif)'; // literata default
   };
@@ -146,6 +217,19 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                 </button>
               </>
             )}
+            <span className="meta-separator">·</span>
+            <button
+              className={`meta-play-chapter-btn ${isPlayingThisChapter ? 'active' : ''}`}
+              onClick={handleToggleListenChapter}
+              title={isPlayingThisChapter ? 'Pausar o reanudar lectura de audio' : 'Reproducir capítulo completo'}
+              aria-label={isPlayingThisChapter ? 'Pausar lectura' : 'Reproducir capítulo'}
+            >
+              {isPlayingThisChapter && playbackState === 'playing' ? (
+                <Pause size={9} fill="currentColor" />
+              ) : (
+                <Play size={9} fill="currentColor" style={{ marginLeft: '1px' }} />
+              )}
+            </button>
           </div>
         </header>
 
@@ -163,11 +247,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                 lineHeight={getLineHeightMultiplier()}
                 isSelected={selectedVerse === v.verse}
                 isBookmarked={bookmarkedVerses.has(v.verse)}
+                isPlayingAudio={activeVerseNumber === v.verse}
                 onToggleBookmark={onToggleBookmark}
                 onSelectConcept={onSelectConcept}
                 onCompareVerse={onCompareVerse}
                 onSearchWord={onSearchWord}
                 onFocusVerse={onSelectVerse}
+                onListenVerse={handleListenFromVerse}
                 chapterTesters={chapterTesters}
               />
             ))}
@@ -214,11 +300,13 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                         lineHeight={getLineHeightMultiplier()}
                         isSelected={selectedVerse === v.verse}
                         isBookmarked={bookmarkedVerses.has(v.verse)}
+                        isPlayingAudio={activeVerseNumber === v.verse}
                         onToggleBookmark={onToggleBookmark}
                         onSelectConcept={onSelectConcept}
                         onCompareVerse={onCompareVerse}
                         onSearchWord={onSearchWord}
                         onFocusVerse={onSelectVerse}
+                        onListenVerse={handleListenFromVerse}
                         chapterTesters={chapterTesters}
                       />
                     </div>

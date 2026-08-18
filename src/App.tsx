@@ -16,6 +16,7 @@ import { DeepStudyView } from './components/DeepStudyView';
 import { CommandPalette } from './components/CommandPalette';
 import { StudyDrawer } from './components/StudyDrawer';
 import { TextSelectionToolbar } from './components/TextSelectionToolbar';
+import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BookPickerModal } from './components/BookPickerModal';
 import { VerseCompareModal } from './components/VerseCompareModal';
 import { usePersistentBoolean } from './hooks/usePersistentBoolean';
@@ -440,6 +441,12 @@ export function App() {
               onSelectTheme={setTheme}
               fontSize={fontSize}
               onChangeFontSize={setFontSize}
+              fontFamily={fontFamily}
+              onChangeFontFamily={setFontFamily}
+              lineHeightPreset={lineHeightPreset}
+              onChangeLineHeight={setLineHeightPreset}
+              maxWidthPreset={maxWidthPreset}
+              onChangeMaxWidth={setMaxWidthPreset}
               versions={versions}
               currentVersion={currentVersion}
               onSelectDefaultVersion={setCurrentVersion}
@@ -514,6 +521,10 @@ export function App() {
           chapter={currentChapter}
         />
       )}
+
+      {/* Global audio player: mounted at the root so `position: fixed` keeps
+          it pinned to the bottom of the window in every view and scroll state */}
+      <AudioPlayerBar />
     </div>
   );
 }

@@ -118,3 +118,94 @@ pub fn close_window(window: tauri::Window) -> Result<(), String> {
 pub fn set_window_decorations(window: tauri::Window, decorations: bool) -> Result<(), String> {
     window.set_decorations(decorations).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn check_voicebox_status(
+    state: State<'_, AppState>,
+    url: Option<String>,
+) -> Result<crate::tts::VoiceboxStatus, String> {
+    Ok(state.tts.check_voicebox_status(url.as_deref()).await)
+}
+
+#[tauri::command]
+pub async fn get_voicebox_profiles(
+    state: State<'_, AppState>,
+    url: Option<String>,
+) -> Result<Vec<crate::tts::VoiceProfile>, String> {
+    state.tts.get_voicebox_profiles(url.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn synthesize_speech(
+    state: State<'_, AppState>,
+    request: crate::tts::SpeechRequest,
+) -> Result<crate::tts::SpeechResponse, String> {
+    state.tts.synthesize(request).await
+}
+
+#[tauri::command]
+pub async fn cancel_speech(
+    state: State<'_, AppState>,
+    url: Option<String>,
+    generation_id: Option<String>,
+) -> Result<bool, String> {
+    state.tts.cancel_speech(url.as_deref(), generation_id.as_deref()).await
+}
+
+#[tauri::command]
+pub fn get_audio_cache_size(state: State<'_, AppState>) -> Result<u64, String> {
+    Ok(state.tts.get_cache_size())
+}
+
+#[tauri::command]
+pub fn clear_audio_cache(state: State<'_, AppState>) -> Result<u64, String> {
+    state.tts.clear_cache()
+}
+
+#[tauri::command]
+pub async fn auto_setup_voicebox(
+    endpoint: Option<String>,
+) -> Result<crate::tts::installer::VoiceboxSetupResult, String> {
+    crate::tts::installer::start_or_setup_voicebox(endpoint.as_deref()).await
+}
+
+// Resolves when the spawned player process exits, so the frontend advances
+// verses on real audio completion instead of a wall-clock estimate.
+#[tauri::command]
+pub async fn play_native_audio(
+    state: State<'_, AppState>,
+    audio_base64: String,
+    speed: Option<f32>,
+    offset_sec: Option<f32>,
+) -> Result<crate::tts::player::PlaybackOutcome, String> {
+    use base64::prelude::*;
+    let bytes = BASE64_STANDARD.decode(&audio_base64).map_err(|e| format!("Base64 decode error: {}", e))?;
+    let seq = state
+        .tts
+        .play_audio_bytes(&bytes, speed.unwrap_or(1.0), offset_sec.unwrap_or(0.0))
+        .await?;
+    Ok(state.tts.wait_playback(seq).await)
+}
+
+#[tauri::command]
+pub async fn pause_native_audio(state: State<'_, AppState>) -> Result<(), String> {
+    state.tts.pause_playback().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn resume_native_audio(state: State<'_, AppState>) -> Result<(), String> {
+    state.tts.resume_playback().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_native_audio(state: State<'_, AppState>) -> Result<(), String> {
+    state.tts.stop_playback().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn is_native_audio_playing(state: State<'_, AppState>) -> Result<bool, String> {
+    Ok(state.tts.is_playing().await)
+}

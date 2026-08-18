@@ -96,7 +96,81 @@ export interface ThemeDefinition {
   description: string;
 }
 
-export type ScriptureFont = 'literata' | 'crimson' | 'garamond' | 'sans';
+export type ScriptureFont =
+  | 'literata'
+  | 'crimson'
+  | 'garamond'
+  | 'charter'
+  | 'source-serif'
+  | 'sf-pro'
+  | 'inter'
+  | 'jakarta'
+  | 'sans';
+
+export interface ScriptureFontOption {
+  id: ScriptureFont;
+  name: string;
+  group: 'suggested' | 'other';
+  fontVar: string;
+}
+
+export const SCRIPTURE_FONT_OPTIONS: ScriptureFontOption[] = [
+  {
+    id: 'literata',
+    name: 'Literata',
+    group: 'suggested',
+    fontVar: 'var(--font-serif)',
+  },
+  {
+    id: 'sf-pro',
+    name: 'San Francisco (SF Pro)',
+    group: 'suggested',
+    fontVar: 'var(--font-sf-pro)',
+  },
+  {
+    id: 'garamond',
+    name: 'Cormorant Garamond',
+    group: 'suggested',
+    fontVar: 'var(--font-garamond)',
+  },
+  {
+    id: 'crimson',
+    name: 'Crimson Pro',
+    group: 'suggested',
+    fontVar: 'var(--font-crimson)',
+  },
+  {
+    id: 'charter',
+    name: 'Charter',
+    group: 'other',
+    fontVar: 'var(--font-charter)',
+  },
+  {
+    id: 'source-serif',
+    name: 'Source Serif 4',
+    group: 'other',
+    fontVar: 'var(--font-source-serif)',
+  },
+  {
+    id: 'inter',
+    name: 'Inter',
+    group: 'other',
+    fontVar: 'var(--font-inter)',
+  },
+  {
+    id: 'jakarta',
+    name: 'Plus Jakarta Sans',
+    group: 'other',
+    fontVar: 'var(--font-jakarta)',
+  },
+  {
+    id: 'sans',
+    name: 'General Sans',
+    group: 'other',
+    fontVar: 'var(--font-sans)',
+  },
+];
+
 export type LineHeightPreset = 'compact' | 'comfortable' | 'spacious';
 export type MaxWidthPreset = 'standard' | 'wide' | 'expanded';
 

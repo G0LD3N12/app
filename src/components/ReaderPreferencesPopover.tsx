@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScriptureFont, LineHeightPreset, MaxWidthPreset, AppTheme } from '../types';
 import { SlidersHorizontal, Type, AlignJustify, MoveHorizontal, Moon, Sun } from 'lucide-react';
+import { FontPicker } from './FontPicker';
 
 interface ReaderPreferencesPopoverProps {
   isOpen: boolean;
@@ -34,13 +35,6 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
   if (!isOpen) return null;
 
   const isDark = theme ? theme !== 'white' && theme !== 'sepia' && theme !== 'light' : true;
-
-  const fontOptions: Array<{ id: ScriptureFont; name: string; fontVar: string }> = [
-    { id: 'literata', name: 'Literata', fontVar: 'var(--font-serif)' },
-    { id: 'crimson', name: 'Crimson', fontVar: 'var(--font-crimson)' },
-    { id: 'garamond', name: 'Cormorant Garamond', fontVar: 'var(--font-garamond)' },
-    { id: 'sans', name: 'Sans', fontVar: 'var(--font-sans)' },
-  ];
 
   const handleSetTheme = (mode: 'dark' | 'light') => {
     if (!onSelectTheme) return;
@@ -93,20 +87,11 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
             <Type size={13} />
             <span>Tipografía</span>
           </div>
-          <div className="reader-pref-font-row">
-            {fontOptions.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                data-font={opt.id}
-                style={{ fontFamily: opt.fontVar }}
-                className={`reader-pref-btn reader-pref-font-btn ${fontFamily === opt.id ? 'active' : ''}`}
-                onClick={() => onChangeFontFamily(opt.id)}
-              >
-                {opt.name}
-              </button>
-            ))}
-          </div>
+          <FontPicker
+            fontFamily={fontFamily}
+            onChangeFontFamily={onChangeFontFamily}
+            variant="popover"
+          />
         </div>
 
         <div className="reader-pref-divider" />

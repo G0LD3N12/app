@@ -1,13 +1,16 @@
 pub mod ai;
 pub mod commands;
 pub mod db;
+pub mod tts;
 
 use db::DatabaseManager;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+use tts::AudioEngineService;
 
 pub struct AppState {
     pub db: DatabaseManager,
+    pub tts: AudioEngineService,
 }
 
 fn resolve_resource_dir(app: &AppHandle) -> PathBuf {
@@ -55,6 +58,7 @@ fn resolve_resource_dir(app: &AppHandle) -> PathBuf {
 pub fn run() {
     // Hardware acceleration optimization flags for WebKitGTK on Linux
     std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "0");
+    std::env::set_var("WEBKIT_FORCE_COMPOSITING_MODE", "1");
     std::env::set_var("LIBGL_ALWAYS_SOFTWARE", "0");
 
     tauri::Builder::default()
@@ -63,7 +67,11 @@ pub fn run() {
             let res_dir = resolve_resource_dir(app.handle());
             let db_mgr = DatabaseManager::new(res_dir)
                 .expect("Failed to initialize SQLite DatabaseManager");
-            app.manage(AppState { db: db_mgr });
+            
+            let cache_dir = app.path().app_cache_dir().unwrap_or_else(|_| PathBuf::from(".cache"));
+            let tts_service = AudioEngineService::new(cache_dir);
+
+            app.manage(AppState { db: db_mgr, tts: tts_service });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -80,7 +88,19 @@ pub fn run() {
             commands::minimize_window,
             commands::toggle_maximize_window,
             commands::close_window,
-            commands::set_window_decorations
+            commands::set_window_decorations,
+            commands::check_voicebox_status,
+            commands::get_voicebox_profiles,
+            commands::synthesize_speech,
+            commands::cancel_speech,
+            commands::get_audio_cache_size,
+            commands::clear_audio_cache,
+            commands::auto_setup_voicebox,
+            commands::play_native_audio,
+            commands::pause_native_audio,
+            commands::resume_native_audio,
+            commands::stop_native_audio,
+            commands::is_native_audio_playing
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

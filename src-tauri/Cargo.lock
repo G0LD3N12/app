@@ -4517,6 +4517,8 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 name = "verbum-desktop"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "hex",
  "r2d2",
  "r2d2_sqlite",
  "regex",
@@ -4524,9 +4526,11 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
+ "tempfile",
  "tokio",
 ]
 

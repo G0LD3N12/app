@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VerseWithStudy, ConceptOccurrenceBadge } from '../types';
-import { Bookmark, Copy, SplitSquareVertical, Sparkles, Search, Check } from 'lucide-react';
+import { Bookmark, Copy, SplitSquareVertical, Sparkles, Search, Check, Volume2 } from 'lucide-react';
 
 export interface ConceptTester {
   concept: ConceptOccurrenceBadge;
@@ -15,11 +15,13 @@ interface VerseItemProps {
   lineHeight: number;
   isSelected: boolean;
   isBookmarked: boolean;
+  isPlayingAudio?: boolean;
   onToggleBookmark: (verseNum: number) => void;
   onSelectConcept: (slug: string) => void;
   onCompareVerse: (verseNum: number) => void;
   onSearchWord: (word: string) => void;
   onFocusVerse: (verseNum: number) => void;
+  onListenVerse?: (verseNum: number, text: string) => void;
   /** Pre-compiled regex testers for the chapter's concepts (shared across verses) */
   chapterTesters: ConceptTester[];
 }
@@ -32,11 +34,13 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
   lineHeight,
   isSelected,
   isBookmarked,
+  isPlayingAudio,
   onToggleBookmark,
   onSelectConcept,
   onCompareVerse,
   onSearchWord,
   onFocusVerse,
+  onListenVerse,
   chapterTesters,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
@@ -132,7 +136,7 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
   return (
     <div
       id={`verse-${verse.verse}`}
-      className={`verse-row-editorial ${isSelected ? 'selected' : ''} ${isBookmarked ? 'bookmarked' : ''}`}
+      className={`verse-row-editorial ${isSelected ? 'selected' : ''} ${isBookmarked ? 'bookmarked' : ''} ${isPlayingAudio ? 'playing-audio' : ''}`}
       style={{
         fontSize: `${fontSize}px`,
         lineHeight: lineHeight,
@@ -155,6 +159,16 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
       <span className="verse-text-editorial">{interactiveText}</span>
 
       <div className="verse-floating-toolbar" onClick={(e) => e.stopPropagation()}>
+        {onListenVerse && (
+          <button
+            className="verse-tool-btn"
+            onClick={() => onListenVerse(verse.verse, verse.text)}
+            title="Escuchar desde este versículo (🔊)"
+          >
+            <Volume2 size={14} />
+          </button>
+        )}
+
         <button
           className={`verse-tool-btn ${isBookmarked ? 'active-bookmark' : ''}`}
           onClick={() => onToggleBookmark(verse.verse)}

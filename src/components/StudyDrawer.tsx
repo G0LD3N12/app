@@ -19,7 +19,9 @@ import {
   Info,
   AlertCircle,
   RefreshCw,
+  Volume2,
 } from 'lucide-react';
+import { useAudioManager } from '../context/AudioManagerContext';
 
 interface StudyDrawerProps {
   slug: string | null;
@@ -43,6 +45,27 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const { playStudyExplanation } = useAudioManager();
+
+  const handleListenExegesis = useCallback(() => {
+    if (aiResult) {
+      const parts = [
+        aiResult.summary,
+        aiResult.biblical_context ? `Contexto bíblico: ${aiResult.biblical_context}` : '',
+        aiResult.historical_cultural_context ? `Trasfondo histórico: ${aiResult.historical_cultural_context}` : '',
+        aiResult.linguistic_context ? `Léxico y traducción: ${aiResult.linguistic_context}` : '',
+      ].filter(Boolean);
+      playStudyExplanation(parts.join('. '), aiRequest?.selected_text || aiResult.title || 'Exégesis IA');
+    } else if (concept) {
+      const parts = [
+        concept.term_es,
+        concept.short_summary,
+        concept.biblical_context_md,
+        concept.historical_context_md,
+      ].filter(Boolean);
+      playStudyExplanation(parts.join('. '), concept.term_es);
+    }
+  }, [aiResult, concept, aiRequest, playStudyExplanation]);
 
   const loadAIAnalysis = useCallback(() => {
     if (!aiRequest) return;
@@ -200,6 +223,18 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
           {/* Render Dynamic AI Exegesis Result */}
           {!loading && aiResult && (
             <div className="drawer-flow-content">
+              {/* Listen Action Bar */}
+              <div className="drawer-audio-action-row">
+                <button
+                  className="btn-listen-drawer"
+                  onClick={handleListenExegesis}
+                  title="Escuchar explicación con voz"
+                >
+                  <Volume2 size={13} />
+                  <span>Escuchar explicación</span>
+                </button>
+              </div>
+
               {/* Executive Summary Callout */}
               <div className="summary-callout">
                 <p style={{ margin: 0 }}>{aiResult.summary}</p>

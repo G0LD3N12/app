@@ -39,7 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       iconClass: 'icon-anim-search',
       action: onTriggerSearch,
       isAction: true,
-      shortcut: 'Ctrl+K',
     },
     {
       id: 'study' as AppView,
@@ -106,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               key={item.id}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
               onClick={() => item.action()}
-              title={!isExpanded ? `${item.label} ${item.shortcut ? `(${item.shortcut})` : ''}` : undefined}
+              title={!isExpanded ? item.label : undefined}
             >
               <div className={`sidebar-icon-wrapper ${item.iconClass}`}>
                 <Icon size={19} />
@@ -115,7 +114,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               {isExpanded && (
                 <div className="sidebar-label-group">
                   <span className="sidebar-item-label">{item.label}</span>
-                  {item.shortcut && <span className="sidebar-shortcut-tag">{item.shortcut}</span>}
                 </div>
               )}
 

@@ -34,12 +34,12 @@
   --badge-historical-bg: rgba(229, 184, 66, 0.12);
 }
 
-/* OLED Pitch Black */
+/* OLED Pitch Black (Pure Monochrome & Crisp White, ZERO Yellow/Gold) */
 [data-theme="black"] {
   --bg-app: #000000;
   --bg-surface: #000000;
   --bg-surface-elevated: #111111;
-  --bg-surface-active: #1e1e1e;
+  --bg-surface-active: #1c1c1c;
   --bg-overlay: rgba(0, 0, 0, 0.95);
   --border-subtle: #242424;
   --border-medium: #383838;
@@ -48,19 +48,19 @@
   --text-secondary: #b0b0b0;
   --text-muted: #808080;
   
-  --accent-gold: #e5b842;
-  --accent-gold-soft: rgba(229, 184, 66, 0.14);
-  --accent-gold-hover: rgba(229, 184, 66, 0.24);
-  --accent-gold-glow: rgba(229, 184, 66, 0.35);
+  --accent-gold: #ffffff;
+  --accent-gold-soft: rgba(255, 255, 255, 0.12);
+  --accent-gold-hover: rgba(255, 255, 255, 0.22);
+  --accent-gold-glow: rgba(255, 255, 255, 0.35);
   
-  --verse-selected-bg: rgba(229, 184, 66, 0.10);
-  --verse-selected-border: #e5b842;
-  --verse-selected-num: #e5b842;
+  --verse-selected-bg: rgba(255, 255, 255, 0.08);
+  --verse-selected-border: #ffffff;
+  --verse-selected-num: #ffffff;
   
   --badge-biblical: #58a6ff;
   --badge-biblical-bg: rgba(88, 166, 255, 0.14);
-  --badge-historical: #e5b842;
-  --badge-historical-bg: rgba(229, 184, 66, 0.12);
+  --badge-historical: #d4d4d8;
+  --badge-historical-bg: rgba(255, 255, 255, 0.10);
 }
 
 /* Official Tokyo Night (Tokyo Storm & Electric Blue, NO Yellow) */
@@ -237,10 +237,72 @@
   --badge-historical-bg: rgba(0, 0, 0, 0.06);
 }
 
+/* =========================================================================
+   1b. FROSTED-GLASS TOKENS PER THEME
+   rgba values (no color-mix dependency): translucent even if the engine
+   ignores backdrop-filter; dark themes get smoke glass, light themes a
+   denser frost that keeps dark text readable.
+   ========================================================================= */
+:root,
+[data-theme="obsidian"],
+[data-theme="dark"] {
+  --glass-bar-bg: rgba(21, 27, 35, 0.62);
+  --glass-bar-border: rgba(240, 246, 252, 0.14);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="black"] {
+  --glass-bar-bg: rgba(10, 10, 10, 0.55);
+  --glass-bar-border: rgba(136, 136, 136, 0.22);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="tokyonight"] {
+  --glass-bar-bg: rgba(36, 40, 59, 0.62);
+  --glass-bar-border: rgba(65, 72, 104, 0.55);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="catppuccin"] {
+  --glass-bar-bg: rgba(49, 50, 68, 0.62);
+  --glass-bar-border: rgba(205, 214, 244, 0.18);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="vercel"] {
+  --glass-bar-bg: rgba(16, 16, 16, 0.58);
+  --glass-bar-border: rgba(51, 51, 51, 0.75);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="nord"] {
+  --glass-bar-bg: rgba(59, 66, 82, 0.62);
+  --glass-bar-border: rgba(76, 86, 106, 0.6);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="sepia"] {
+  --glass-bar-bg: rgba(233, 222, 201, 0.8);
+  --glass-bar-border: rgba(90, 70, 50, 0.25);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="white"],
+[data-theme="light"] {
+  --glass-bar-bg: rgba(244, 244, 245, 0.8);
+  --glass-bar-border: rgba(24, 24, 27, 0.12);
+  --glass-bar-highlight: rgba(255, 255, 255, 0.6);
+}
+
 :root {
   --font-serif: 'Literata', Georgia, serif;
   --font-crimson: 'Crimson Pro', Georgia, serif;
   --font-garamond: 'Cormorant Garamond', Garamond, serif;
+  --font-charter: 'Charter', 'Bitstream Charter', 'Newsreader', Georgia, serif;
+  --font-source-serif: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+  --font-sf-pro: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'SF Pro', system-ui, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-jakarta: 'Plus Jakarta Sans', sans-serif;
   --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-title-luxury: 'Cinzel Decorative', 'Cinzel', serif;
   --font-title: 'Cinzel', serif;
@@ -425,8 +487,8 @@ input {
   }
   40% {
     transform: translateY(-2.5px) scale(1.06);
-    color: #fff5d4;
-    text-shadow: 0 0 14px rgba(229, 184, 66, 0.7);
+    color: var(--text-primary);
+    text-shadow: 0 0 14px var(--accent-gold-glow);
   }
   100% {
     transform: translateY(0) scale(1);
@@ -670,13 +732,24 @@ input {
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-medium);
-  box-shadow: var(--shadow-lg);
+  background-color: var(--glass-bar-bg);
+  border: 1px solid var(--glass-bar-border);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--glass-bar-highlight);
   padding: 5px 12px;
   border-radius: 24px;
   animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  backdrop-filter: blur(8px);
+}
+
+/* Same frosted-glass contract as the audio pill: single bounded GPU blur
+   pass over a small fixed bar; translucency already comes from the
+   per-theme rgba tokens above */
+@supports (backdrop-filter: blur(1px)) {
+  .floating-zen-bar {
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
 }
 
 .floating-zen-passage {
@@ -2685,11 +2758,173 @@ body,
   color: var(--text-primary);
 }
 
-/* Font Selection Row (1x4 Grid) */
-.reader-pref-font-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+/* =========================================================================
+   ULTRA-MINIMALIST LUXURY FONT PICKER
+   ========================================================================= */
+
+.font-picker-container {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+/* Trigger Button */
+.font-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  min-height: 34px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.font-picker-trigger:hover {
+  background-color: var(--bg-surface-active);
+  border-color: var(--border-medium);
+}
+
+.font-picker-container.is-open .font-picker-trigger {
+  border-color: var(--accent-gold);
+  background-color: var(--bg-surface-active);
+}
+
+.font-picker-selected-name {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
+
+.font-picker-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.font-picker-chevron.rotate {
+  transform: rotate(180deg);
+  color: var(--accent-gold);
+}
+
+/* Dropdown Menu */
+.font-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fontPickerIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fontPickerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Group Headers */
+.font-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.font-picker-group-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 3px 8px;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.font-picker-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.font-picker-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 3px 4px;
+}
+
+/* Individual Option */
+.font-picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  text-align: left;
+}
+
+.font-picker-option:hover {
+  background-color: var(--bg-surface-active);
+  color: var(--text-primary);
+}
+
+.font-picker-option.active {
+  background-color: var(--accent-gold-soft);
+  color: var(--text-primary);
+}
+
+.font-picker-option-name {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.font-picker-check {
+  color: var(--accent-gold);
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+/* Light / White Theme Overrides */
+[data-theme="white"] .font-picker-dropdown,
+[data-theme="light"] .font-picker-dropdown {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
 .reader-pref-btn {
@@ -4617,6 +4852,318 @@ body,
 [data-theme="white"] .verse-compare-version-name,
 [data-theme="light"] .verse-compare-version-name {
   color: #18181b;
+}
+
+/* =========================================================================
+   AUDIO & TTS SYSTEM (VOICEBOX & SYSTEM TTS)
+   ========================================================================= */
+
+/* Active Verse Audio Highlighting (Sober, 180ms transition) */
+.verse-row-editorial.playing-audio {
+  background-color: rgba(212, 163, 89, 0.08);
+  border-left: 3px solid var(--accent-gold, #d4a359);
+  padding-left: 10px;
+  border-radius: 4px;
+  transition: background-color 0.18s ease, border-color 0.18s ease, padding 0.18s ease;
+}
+
+.verse-row-editorial.playing-audio .verse-number-editorial {
+  color: var(--accent-gold, #d4a359);
+  font-weight: 700;
+}
+
+/* Floating Audio Player Bar — mounted at App root so it stays pinned to the
+   bottom of the window regardless of view or scroll position */
+.audio-player-bar-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 950;
+  pointer-events: none;
+  animation: audioBarSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes audioBarSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.audio-player-bar-compact {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 12px;
+  background-color: var(--glass-bar-bg);
+  border: 1px solid var(--glass-bar-border);
+  border-radius: 30px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.32),
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 var(--glass-bar-highlight);
+  height: 40px;
+}
+
+/* Frosted glass enhancement. Performance contract: blur radius bounded (14px)
+   combined with saturate into ONE GPU pass, applied only to small fixed
+   pills (never scrollable surfaces), and nothing animates backdrop-filter —
+   only transform/opacity in the slide-up. Translucency above comes from the
+   per-theme rgba tokens, so it renders even without backdrop-filter support. */
+@supports (backdrop-filter: blur(1px)) {
+  .audio-player-bar-compact {
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+}
+
+/* Verse-progress ring around the play button */
+.audio-play-ring-wrap {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.audio-play-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.audio-play-ring-track {
+  fill: none;
+  stroke: var(--border-medium);
+  stroke-width: 2;
+}
+
+.audio-play-ring-progress {
+  fill: none;
+  stroke: var(--accent-gold, #d4a359);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s linear;
+}
+
+/* Compact Transport Controls */
+.audio-compact-transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.audio-btn-ctrl-compact {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.audio-btn-ctrl-compact:hover:not(:disabled) {
+  color: var(--text-primary);
+  background-color: var(--bg-surface-active);
+}
+
+.audio-btn-ctrl-compact:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.audio-btn-play-compact {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--text-primary);
+  color: var(--bg-surface);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.audio-btn-play-compact:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.audio-btn-play-compact.loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.audio-compact-divider {
+  width: 1px;
+  height: 18px;
+  background-color: var(--border-subtle);
+}
+
+/* Compact Passage Tag */
+.audio-compact-passage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.audio-compact-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.audio-compact-secondary {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.audio-engine-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.audio-engine-dot.voicebox {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.audio-engine-dot.system {
+  background-color: #f59e0b;
+}
+
+/* Compact Speed Button */
+.audio-compact-speed-btn {
+  background-color: var(--bg-surface-active);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  min-width: 32px;
+  text-align: center;
+}
+
+.audio-compact-speed-btn:hover {
+  border-color: var(--accent-gold);
+}
+
+.audio-compact-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.audio-compact-close-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-surface-active);
+}
+
+/* Symmetrical Mathematically Aligned Chapter Play Button */
+.meta-play-chapter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  vertical-align: middle;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.meta-play-chapter-btn:hover {
+  background-color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #000000;
+  transform: scale(1.08);
+}
+
+.meta-play-chapter-btn.active {
+  background-color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #000000;
+  box-shadow: 0 0 10px var(--accent-gold-glow);
+}
+
+[data-theme="black"] .meta-play-chapter-btn:hover,
+[data-theme="black"] .meta-play-chapter-btn.active {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="white"] .meta-play-chapter-btn:hover,
+[data-theme="white"] .meta-play-chapter-btn.active,
+[data-theme="light"] .meta-play-chapter-btn:hover,
+[data-theme="light"] .meta-play-chapter-btn.active {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Study Drawer Audio Button */
+.drawer-audio-action-row {
+  margin-bottom: 12px;
+}
+
+.btn-listen-drawer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.btn-listen-drawer:hover {
+  background-color: var(--bg-surface-active);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
 }
 
 
