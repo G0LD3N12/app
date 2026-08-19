@@ -13,7 +13,7 @@ export const THEME_PALETTES: ThemeDefinition[] = [
   },
   {
     id: 'black',
-    name: 'OLED Pitch Black',
+    name: 'Pure Black',
     category: 'dark',
     bgPreview: '#000000',
     surfacePreview: '#000000',

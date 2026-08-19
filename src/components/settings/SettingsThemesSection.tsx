@@ -5,7 +5,7 @@ import { THEME_PALETTES } from '../../themeDefinitions';
 
 const THEME_LABELS: Partial<Record<AppTheme, string>> = {
   obsidian: 'Obsidian',
-  black: 'OLED',
+  black: 'Pure Black',
   tokyonight: 'Tokyo Night',
   catppuccin: 'Catppuccin',
   vercel: 'Geist',
@@ -62,7 +62,7 @@ export const SettingsThemesSection: React.FC<SettingsThemesSectionProps> = ({
   onSelectTheme,
 }) => {
   const [filter, setFilter] = useState<'all' | 'dark' | 'light'>('all');
-  const activeTheme = theme === 'dark' ? 'obsidian' : theme === 'light' ? 'white' : theme;
+  const activeTheme = theme === 'dark' ? 'black' : theme === 'light' ? 'white' : theme;
   const themes = useMemo(
     () => THEME_PALETTES.filter((item) => filter === 'all' || item.category === filter),
     [filter]

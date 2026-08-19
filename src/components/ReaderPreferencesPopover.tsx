@@ -39,7 +39,7 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
   const handleSetTheme = (mode: 'dark' | 'light') => {
     if (!onSelectTheme) return;
     if (mode === 'dark') {
-      if (!isDark) onSelectTheme('obsidian');
+      if (!isDark) onSelectTheme('black');
     } else {
       if (isDark) onSelectTheme('white');
     }
