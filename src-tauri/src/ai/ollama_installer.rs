@@ -1,13 +1,28 @@
 use crate::ai::types::OllamaModelInstallStatus;
 use serde_json::Value;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::Duration;
+
+static OLLAMA_START_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+fn endpoint_is_local(endpoint: &str) -> bool {
+    reqwest::Url::parse(endpoint)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+        .map(|host| matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1" | "[::1]"))
+        .unwrap_or(false)
+}
 
 pub fn find_ollama_binary() -> Option<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(home) = std::env::var("HOME") {
-        candidates.push(PathBuf::from(&home).join(".local").join("bin").join("ollama"));
+        candidates.push(
+            PathBuf::from(&home)
+                .join(".local")
+                .join("bin")
+                .join("ollama"),
+        );
     }
     candidates.push(PathBuf::from("/usr/local/bin/ollama"));
     candidates.push(PathBuf::from("/usr/bin/ollama"));
@@ -31,6 +46,66 @@ pub fn find_ollama_binary() -> Option<PathBuf> {
     None
 }
 
+/// Starts an already-installed Ollama daemon without downloading anything.
+/// Model files remain in Ollama's native persistent store and are discovered
+/// again through `/api/tags` after each launch.
+pub async fn start_installed_ollama_daemon(endpoint: &str) -> bool {
+    let clean_endpoint = if endpoint.trim().is_empty() {
+        "http://localhost:11434"
+    } else {
+        endpoint.trim().trim_end_matches('/')
+    };
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+    let tags_url = format!("{}/api/tags", clean_endpoint);
+    let _start_guard = OLLAMA_START_LOCK.lock().await;
+    if client
+        .get(&tags_url)
+        .send()
+        .await
+        .map(|response| response.status().is_success())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+
+    if !endpoint_is_local(clean_endpoint) {
+        return false;
+    }
+    let Some(binary) = find_ollama_binary() else {
+        return false;
+    };
+    if Command::new(binary)
+        .arg("serve")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .is_err()
+    {
+        return false;
+    }
+
+    for _ in 0..20 {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        if client
+            .get(&tags_url)
+            .send()
+            .await
+            .map(|response| response.status().is_success())
+            .unwrap_or(false)
+        {
+            return true;
+        }
+    }
+    false
+}
+
 pub async fn ensure_ollama_daemon_running(endpoint: &str) -> Result<(), String> {
     let clean_endpoint = if endpoint.trim().is_empty() {
         "http://localhost:11434"
@@ -44,7 +119,13 @@ pub async fn ensure_ollama_daemon_running(endpoint: &str) -> Result<(), String> 
         .map_err(|e| e.to_string())?;
 
     let tags_url = format!("{}/api/tags", clean_endpoint);
-    if client.get(&tags_url).send().await.map(|r| r.status().is_success()).unwrap_or(false) {
+    if client
+        .get(&tags_url)
+        .send()
+        .await
+        .map(|r| r.status().is_success())
+        .unwrap_or(false)
+    {
         return Ok(());
     }
 
@@ -64,32 +145,39 @@ pub async fn ensure_ollama_daemon_running(endpoint: &str) -> Result<(), String> 
             local_dir.display()
         );
 
-        let _ = Command::new("sh")
-            .arg("-c")
-            .arg(&install_cmd)
-            .output();
+        let _ = Command::new("sh").arg("-c").arg(&install_cmd).output();
 
         if let Some(p) = find_ollama_binary() {
             p
         } else {
-            return Err("No se pudo localizar ni descargar automáticamente el binario de Ollama.".to_string());
+            return Err(
+                "No se pudo localizar ni descargar automáticamente el binario de Ollama."
+                    .to_string(),
+            );
         }
     };
 
     // 2. Spawn ollama serve in background
-    let _ = Command::new(&bin_path)
-        .arg("serve")
-        .spawn();
+    let _ = Command::new(&bin_path).arg("serve").spawn();
 
     // 3. Wait up to 6 seconds for the daemon to start accepting connections
     for _ in 0..12 {
         tokio::time::sleep(Duration::from_millis(500)).await;
-        if client.get(&tags_url).send().await.map(|r| r.status().is_success()).unwrap_or(false) {
+        if client
+            .get(&tags_url)
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+        {
             return Ok(());
         }
     }
 
-    Err("Ollama se inició pero el endpoint http://localhost:11434 no respondió a tiempo.".to_string())
+    Err(
+        "Ollama se inició pero el endpoint http://localhost:11434 no respondió a tiempo."
+            .to_string(),
+    )
 }
 
 pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaModelInstallStatus {
@@ -106,6 +194,7 @@ pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaMo
         Ok(c) => c,
         Err(e) => {
             return OllamaModelInstallStatus {
+                is_ollama_installed: find_ollama_binary().is_some(),
                 is_ollama_running: false,
                 is_model_installed: false,
                 model_name: target_model.to_string(),
@@ -117,6 +206,9 @@ pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaMo
     };
 
     let tags_url = format!("{}/api/tags", clean_endpoint);
+    // Installed services are self-healing: a stopped daemon is restarted
+    // before status is reported to the UI.
+    let _ = start_installed_ollama_daemon(clean_endpoint).await;
     match client.get(&tags_url).send().await {
         Ok(resp) if resp.status().is_success() => {
             let body: Value = resp.json().await.unwrap_or(serde_json::json!({}));
@@ -141,20 +233,28 @@ pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaMo
 
             if is_installed {
                 OllamaModelInstallStatus {
+                    is_ollama_installed: true,
                     is_ollama_running: true,
                     is_model_installed: true,
                     model_name: target_model.to_string(),
                     installed_models: models,
-                    message: format!("✓ Modelo «{}» listo para trabajar localmente.", target_model),
+                    message: format!(
+                        "✓ Modelo «{}» listo para trabajar localmente.",
+                        target_model
+                    ),
                     progress_percent: Some(100.0),
                 }
             } else {
                 OllamaModelInstallStatus {
+                    is_ollama_installed: true,
                     is_ollama_running: true,
                     is_model_installed: false,
                     model_name: target_model.to_string(),
                     installed_models: models,
-                    message: format!("Ollama está activo pero el modelo «{}» aún no ha sido descargado.", target_model),
+                    message: format!(
+                        "Ollama está activo pero el modelo «{}» aún no ha sido descargado.",
+                        target_model
+                    ),
                     progress_percent: Some(0.0),
                 }
             }
@@ -162,12 +262,14 @@ pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaMo
         _ => {
             let has_binary = find_ollama_binary().is_some();
             OllamaModelInstallStatus {
+                is_ollama_installed: has_binary,
                 is_ollama_running: false,
                 is_model_installed: false,
                 model_name: target_model.to_string(),
                 installed_models: Vec::new(),
                 message: if has_binary {
-                    "Ollama está instalado pero el servicio en segundo plano está detenido.".to_string()
+                    "Ollama está instalado pero el servicio en segundo plano está detenido."
+                        .to_string()
                 } else {
                     "Ollama no está en ejecución. Pulsa «Instalar» para configurar todo automáticamente.".to_string()
                 },
@@ -177,7 +279,10 @@ pub async fn check_ollama_status(endpoint: &str, target_model: &str) -> OllamaMo
     }
 }
 
-pub async fn install_or_pull_model(endpoint: &str, target_model: &str) -> Result<OllamaModelInstallStatus, String> {
+pub async fn install_or_pull_model(
+    endpoint: &str,
+    target_model: &str,
+) -> Result<OllamaModelInstallStatus, String> {
     let clean_endpoint = if endpoint.trim().is_empty() {
         "http://localhost:11434"
     } else {
@@ -210,7 +315,12 @@ pub async fn install_or_pull_model(endpoint: &str, target_model: &str) -> Result
         .json(&pull_body)
         .send()
         .await
-        .map_err(|e| format!("Error en conexión con el servicio de descarga de Ollama: {}", e))?;
+        .map_err(|e| {
+            format!(
+                "Error en conexión con el servicio de descarga de Ollama: {}",
+                e
+            )
+        })?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -222,24 +332,80 @@ pub async fn install_or_pull_model(endpoint: &str, target_model: &str) -> Result
                 "name": fallback_model,
                 "stream": false
             });
-            let fb_resp = client.post(&pull_url).json(&fallback_body).send().await
+            let fb_resp = client
+                .post(&pull_url)
+                .json(&fallback_body)
+                .send()
+                .await
                 .map_err(|e| format!("Error descargando alternativa de Qwen: {}", e))?;
 
             if fb_resp.status().is_success() {
                 return Ok(OllamaModelInstallStatus {
+                    is_ollama_installed: true,
                     is_ollama_running: true,
                     is_model_installed: true,
                     model_name: fallback_model.to_string(),
                     installed_models: vec![fallback_model.to_string()],
-                    message: format!("✓ Modelo local «{}» descargado y listo para trabajar.", fallback_model),
+                    message: format!(
+                        "✓ Modelo local «{}» descargado y listo para trabajar.",
+                        fallback_model
+                    ),
                     progress_percent: Some(100.0),
                 });
             }
         }
-        return Err(format!("Error en descarga de modelo en Ollama (HTTP {}): {}", status, err_text));
+        return Err(format!(
+            "Error en descarga de modelo en Ollama (HTTP {}): {}",
+            status, err_text
+        ));
     }
 
     // 3. Confirm and return updated status
     let status = check_ollama_status(clean_endpoint, model_to_pull).await;
     Ok(status)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_ollama_status, endpoint_is_local};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    async fn tags_endpoint(models_json: &'static str) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            for _ in 0..2 {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut request = [0u8; 1024];
+                let _ = stream.read(&mut request).await;
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    models_json.len(),
+                    models_json
+                );
+                stream.write_all(response.as_bytes()).await.unwrap();
+            }
+        });
+        format!("http://{}", address)
+    }
+
+    #[tokio::test]
+    async fn status_rediscovers_a_persisted_model_after_launch() {
+        let endpoint = tags_endpoint(r#"{"models":[{"name":"qwen2.5:3b"}]}"#).await;
+        let status = check_ollama_status(&endpoint, "qwen2.5:3b").await;
+
+        assert!(status.is_ollama_installed);
+        assert!(status.is_ollama_running);
+        assert!(status.is_model_installed);
+        assert_eq!(status.installed_models, vec!["qwen2.5:3b"]);
+    }
+
+    #[test]
+    fn automatic_daemon_start_is_limited_to_loopback_endpoints() {
+        assert!(endpoint_is_local("http://localhost:11434"));
+        assert!(endpoint_is_local("http://127.0.0.1:11434"));
+        assert!(endpoint_is_local("http://[::1]:11434"));
+        assert!(!endpoint_is_local("https://ollama.example.com"));
+    }
 }

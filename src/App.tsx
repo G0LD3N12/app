@@ -6,7 +6,7 @@ import {
   StudyExegesisResult,
   AIProviderConfig,
 } from './types';
-import { fetchVersions, fetchBooks } from './services/bibleService';
+import { fetchVersions, fetchBooks, checkOllamaModelStatus } from './services/bibleService';
 import { Header } from './components/Header';
 import { Sidebar, AppView } from './components/Sidebar';
 import { BibleReader } from './components/BibleReader';
@@ -40,6 +40,7 @@ export function App() {
 
   // Navigation & View State
   const [activeView, setActiveView] = useState<AppView>('reader');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = usePersistentBoolean('verbum_sidebar_expanded');
   const [hideTopBar, setHideTopBar] = usePersistentBoolean('verbum_hide_topbar');
 
@@ -98,6 +99,21 @@ export function App() {
   useEffect(() => {
     localStorage.setItem('verbum_ai_config', JSON.stringify(aiConfig));
   }, [aiConfig]);
+
+  // A previously configured local model should be ready without requiring a
+  // trip back to Settings. The native status check restarts installed Ollama
+  // daemons and re-discovers their persistent model store.
+  useEffect(() => {
+    if (aiConfig.provider_type === 'ollama') {
+      const startupCheck = window.setTimeout(() => {
+        void checkOllamaModelStatus(
+          aiConfig.ollama_endpoint,
+          aiConfig.model_name || 'qwen2.5:3b'
+        );
+      }, 350);
+      return () => window.clearTimeout(startupCheck);
+    }
+  }, [aiConfig.provider_type, aiConfig.ollama_endpoint, aiConfig.model_name]);
 
   // Reader appearance (theme + typography), persisted
   const {
@@ -236,6 +252,16 @@ export function App() {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
       const isInputActive = activeTag === 'input' || activeTag === 'textarea';
 
+      // Settings is a modal workspace over the current page. While it is
+      // open, background reader/navigation shortcuts must stay inert.
+      if (isSettingsOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsSettingsOpen(false);
+        }
+        return;
+      }
+
       // Command Palette (Ctrl+K or Ctrl+F)
       if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'f')) {
         e.preventDefault();
@@ -348,7 +374,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, toggleBookmark, pause, resume, playChapter]);
+  }, [activeView, isSettingsOpen, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, toggleBookmark, pause, resume, playChapter]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -395,6 +421,8 @@ export function App() {
           onToggleExpand={() => setIsSidebarExpanded((prev) => !prev)}
           activeView={activeView}
           onSelectView={(view) => setActiveView(view)}
+          isSettingsOpen={isSettingsOpen}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           onTriggerSearch={openCommandPalette}
           hideTopBar={hideTopBar}
           onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
@@ -484,31 +512,32 @@ export function App() {
             />
           )}
 
-          {activeView === 'settings' && (
-            <SettingsView
-              theme={theme}
-              onSelectTheme={setTheme}
-              fontSize={fontSize}
-              onChangeFontSize={setFontSize}
-              fontFamily={fontFamily}
-              onChangeFontFamily={setFontFamily}
-              lineHeightPreset={lineHeightPreset}
-              onChangeLineHeight={setLineHeightPreset}
-              maxWidthPreset={maxWidthPreset}
-              onChangeMaxWidth={setMaxWidthPreset}
-              versions={versions}
-              currentVersion={currentVersion}
-              onSelectDefaultVersion={setCurrentVersion}
-              hideTopBar={hideTopBar}
-              onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
-              aiConfig={aiConfig}
-              onUpdateAIConfig={setAiConfig}
-              searchLanguages={searchLanguages}
-              onChangeSearchLanguages={handleChangeSearchLanguages}
-            />
-          )}
         </main>
       </div>
+
+      <SettingsView
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theme={theme}
+        onSelectTheme={setTheme}
+        fontSize={fontSize}
+        onChangeFontSize={setFontSize}
+        fontFamily={fontFamily}
+        onChangeFontFamily={setFontFamily}
+        lineHeightPreset={lineHeightPreset}
+        onChangeLineHeight={setLineHeightPreset}
+        maxWidthPreset={maxWidthPreset}
+        onChangeMaxWidth={setMaxWidthPreset}
+        versions={versions}
+        currentVersion={currentVersion}
+        onSelectDefaultVersion={setCurrentVersion}
+        hideTopBar={hideTopBar}
+        onToggleHideTopBar={() => setHideTopBar((prev) => !prev)}
+        aiConfig={aiConfig}
+        onUpdateAIConfig={setAiConfig}
+        searchLanguages={searchLanguages}
+        onChangeSearchLanguages={handleChangeSearchLanguages}
+      />
 
       {/* Slide-over Study Drawer */}
       <StudyDrawer
@@ -536,7 +565,10 @@ export function App() {
         onSelectConcept={handleSelectConcept}
         onToggleParallel={() => setParallelMode((prev) => !prev)}
         onSelectTheme={setTheme}
-        onOpenSettings={() => setActiveView('settings')}
+        onOpenSettings={() => {
+          setIsCommandPaletteOpen(false);
+          setIsSettingsOpen(true);
+        }}
         onOpenStudyCatalog={() => setActiveView('study')}
       />
 

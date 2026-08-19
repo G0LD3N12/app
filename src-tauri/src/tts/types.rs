@@ -11,10 +11,33 @@ pub struct VoiceProfile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceboxStatus {
     pub available: bool,
+    #[serde(default)]
+    pub installed: bool,
     pub url: String,
     pub version: Option<String>,
     pub active_engine: Option<String>,
     pub error: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::VoiceboxStatus;
+
+    #[test]
+    fn older_voicebox_status_payloads_default_to_not_installed() {
+        let status: VoiceboxStatus = serde_json::from_value(serde_json::json!({
+            "available": false,
+            "url": "http://127.0.0.1:17493",
+            "version": null,
+            "active_engine": null,
+            "gpu_available": null,
+            "profiles_count": 0,
+            "error": null
+        }))
+        .unwrap();
+
+        assert!(!status.installed);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

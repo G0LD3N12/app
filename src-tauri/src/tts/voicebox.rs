@@ -54,6 +54,7 @@ impl VoiceboxClient {
                     }
                     VoiceboxStatus {
                         available: true,
+                        installed: false,
                         url: root,
                         version,
                         active_engine,
@@ -62,6 +63,7 @@ impl VoiceboxClient {
                 } else {
                     VoiceboxStatus {
                         available: false,
+                        installed: false,
                         url: root,
                         version: None,
                         active_engine: None,
@@ -71,6 +73,7 @@ impl VoiceboxClient {
             }
             Err(e) => VoiceboxStatus {
                 available: false,
+                installed: false,
                 url: root,
                 version: None,
                 active_engine: None,

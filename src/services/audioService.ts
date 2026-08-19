@@ -14,6 +14,7 @@ export async function checkVoiceboxStatus(url?: string): Promise<VoiceboxStatus>
   } catch (err: any) {
     return {
       available: false,
+      installed: false,
       url: url || 'http://127.0.0.1:17493',
       error: err.toString(),
     };

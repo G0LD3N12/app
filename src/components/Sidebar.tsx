@@ -1,13 +1,15 @@
 import React from 'react';
 import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelTopClose, PanelTopOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
-export type AppView = 'reader' | 'study' | 'settings' | 'deep-study';
+export type AppView = 'reader' | 'study' | 'deep-study';
 
 interface SidebarProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   activeView: AppView;
   onSelectView: (view: AppView) => void;
+  isSettingsOpen: boolean;
+  onOpenSettings: () => void;
   onTriggerSearch: () => void;
   hideTopBar: boolean;
   onToggleHideTopBar: () => void;
@@ -19,6 +21,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onToggleExpand,
   activeView,
   onSelectView,
+  isSettingsOpen,
+  onOpenSettings,
   onTriggerSearch,
   hideTopBar,
   onToggleHideTopBar,
@@ -48,11 +52,12 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       action: () => onSelectView('study'),
     },
     {
-      id: 'settings' as AppView,
+      id: 'settings',
       label: 'Configuración',
       icon: Settings,
       iconClass: 'icon-anim-gear',
-      action: () => onSelectView('settings'),
+      action: onOpenSettings,
+      isAction: true,
     },
   ];
 
@@ -98,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       <nav className="sidebar-nav">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = !item.isAction && activeView === item.id;
+          const isActive = item.id === 'settings' ? isSettingsOpen : !item.isAction && activeView === item.id;
 
           return (
             <button

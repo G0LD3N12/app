@@ -1,378 +1,341 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AIProviderConfig, AIConnectionStatus, OllamaModelInstallStatus } from '../../types';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  testAIConnection,
-  checkOllamaModelStatus,
-  installOrPullOllamaModel,
-} from '../../services/bibleService';
-import {
-  Sparkles,
+  AlertCircle,
+  Check,
   Cpu,
   Database,
-  Loader2,
-  Wifi,
   DownloadCloud,
-  CheckCircle2,
-  AlertCircle,
+  Loader2,
   RefreshCw,
+  Sparkles,
+  Wifi,
 } from 'lucide-react';
+import { AIConnectionStatus, AIProviderConfig, OllamaModelInstallStatus } from '../../types';
+import {
+  checkOllamaModelStatus,
+  installOrPullOllamaModel,
+  testAIConnection,
+} from '../../services/bibleService';
 
 interface SettingsAISectionProps {
   aiConfig: AIProviderConfig;
   onUpdateAIConfig: (cfg: AIProviderConfig) => void;
 }
 
+type ProviderType = AIProviderConfig['provider_type'];
+
+const PROVIDERS: Array<{
+  id: ProviderType;
+  label: string;
+  note: string;
+  icon: React.ComponentType<{ size?: number }>;
+}> = [
+  { id: 'gemini', label: 'Gemini', note: 'Google AI', icon: Sparkles },
+  { id: 'ollama', label: 'Ollama', note: 'En este equipo', icon: Cpu },
+  { id: 'openai_compatible', label: 'API', note: 'OpenAI compatible', icon: Wifi },
+  { id: 'heuristic_offline', label: 'Sin IA', note: 'Biblioteca local', icon: Database },
+];
+
+const providerDefaults: Record<ProviderType, string> = {
+  gemini: 'gemini-3.7-flash',
+  ollama: 'qwen2.5:3b',
+  openai_compatible: 'qwen/qwen-2.5-7b-instruct',
+  heuristic_offline: '',
+};
+
 export const SettingsAISection: React.FC<SettingsAISectionProps> = ({
   aiConfig,
   onUpdateAIConfig,
 }) => {
-  const [testingAI, setTestingAI] = useState<boolean>(false);
+  const [testing, setTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<AIConnectionStatus | null>(null);
-
-  // Ollama local installer state
   const [ollamaStatus, setOllamaStatus] = useState<OllamaModelInstallStatus | null>(null);
-  const [isInstallingOllama, setIsInstallingOllama] = useState<boolean>(false);
+  const [checkingOllama, setCheckingOllama] = useState(false);
+  const [installingOllama, setInstallingOllama] = useState(false);
   const [ollamaError, setOllamaError] = useState<string | null>(null);
 
-  const handleTestConnection = async () => {
-    setTestingAI(true);
+  const selectProvider = (provider: ProviderType) => {
+    setTestStatus(null);
+    onUpdateAIConfig({
+      ...aiConfig,
+      provider_type: provider,
+      model_name:
+        provider === aiConfig.provider_type
+          ? aiConfig.model_name
+          : providerDefaults[provider],
+    });
+  };
+
+  const refreshOllama = useCallback(async () => {
+    setCheckingOllama(true);
+    setOllamaError(null);
+    try {
+      const model = aiConfig.model_name.trim() || providerDefaults.ollama;
+      setOllamaStatus(await checkOllamaModelStatus(aiConfig.ollama_endpoint, model));
+    } catch (error) {
+      setOllamaError(String(error));
+    } finally {
+      setCheckingOllama(false);
+    }
+  }, [aiConfig.model_name, aiConfig.ollama_endpoint]);
+
+  useEffect(() => {
+    if (aiConfig.provider_type !== 'ollama') return;
+    const statusCheck = window.setTimeout(() => void refreshOllama(), 350);
+    return () => window.clearTimeout(statusCheck);
+  }, [aiConfig.provider_type, refreshOllama]);
+
+  const installOllama = async () => {
+    setInstallingOllama(true);
+    setOllamaError(null);
+    try {
+      const model = aiConfig.model_name.trim() || providerDefaults.ollama;
+      const status = await installOrPullOllamaModel(aiConfig.ollama_endpoint, model);
+      setOllamaStatus(status);
+      if (status.is_model_installed) {
+        setTestStatus({
+          is_connected: true,
+          provider_type: 'ollama',
+          model_name: status.model_name,
+          message: 'Modelo local listo.',
+          latency_ms: 0,
+        });
+      }
+    } catch (error) {
+      setOllamaError(String(error));
+    } finally {
+      setInstallingOllama(false);
+    }
+  };
+
+  const testConnection = async () => {
+    setTesting(true);
     setTestStatus(null);
     try {
-      const status = await testAIConnection(aiConfig);
-      setTestStatus(status);
-    } catch (err: any) {
+      setTestStatus(await testAIConnection(aiConfig));
+    } catch (error) {
       setTestStatus({
         is_connected: false,
         provider_type: aiConfig.provider_type,
         model_name: aiConfig.model_name,
-        message: `Error de conexión: ${err?.message || err}`,
+        message: `No se pudo conectar: ${String(error)}`,
       });
     } finally {
-      setTestingAI(false);
+      setTesting(false);
     }
   };
 
-  const refreshOllamaStatus = useCallback(async () => {
-    try {
-      const model = aiConfig.model_name || 'qwen3:4b-instruct-2507';
-      const status = await checkOllamaModelStatus(aiConfig.ollama_endpoint, model);
-      setOllamaStatus(status);
-    } catch (e) {
-      console.error('Error checking Ollama status:', e);
-    }
-  }, [aiConfig.ollama_endpoint, aiConfig.model_name]);
-
-  useEffect(() => {
-    if (aiConfig.provider_type === 'ollama') {
-      refreshOllamaStatus();
-    }
-  }, [aiConfig.provider_type, refreshOllamaStatus]);
-
-  const handleInstallOllamaModel = async () => {
-    setIsInstallingOllama(true);
-    setOllamaError(null);
-    try {
-      const targetModel = aiConfig.model_name || 'qwen3:4b-instruct-2507';
-      const res = await installOrPullOllamaModel(aiConfig.ollama_endpoint, targetModel);
-      setOllamaStatus(res);
-      if (res.is_model_installed) {
-        setTestStatus({
-          is_connected: true,
-          provider_type: 'ollama',
-          model_name: res.model_name,
-          message: `✓ Modelo «${res.model_name}» instalado y listo para trabajar localmente.`,
-          latency_ms: 0,
-        });
-      }
-    } catch (err: any) {
-      setOllamaError(String(err?.message || err));
-    } finally {
-      setIsInstallingOllama(false);
-    }
-  };
+  const ollamaReady = Boolean(ollamaStatus?.is_model_installed);
+  const ollamaRunning = Boolean(ollamaStatus?.is_ollama_running);
+  const ollamaInstalled = Boolean(ollamaStatus?.is_ollama_installed);
+  const ollamaResolved = ollamaStatus !== null;
 
   return (
-    <section className="settings-section">
-      <div className="settings-section-header">
-        <Sparkles size={18} color="var(--accent-gold)" />
-        <h2>Inteligencia & Exégesis («Profundizar con IA»)</h2>
+    <section className="settings-block settings-ai-block">
+      <div className="settings-provider-grid" role="radiogroup" aria-label="Motor de inteligencia">
+        {PROVIDERS.map(({ id, label, note, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={aiConfig.provider_type === id}
+            className={`settings-provider-card ${aiConfig.provider_type === id ? 'active' : ''}`}
+            onClick={() => selectProvider(id)}
+          >
+            <span><Icon size={17} /></span>
+            <strong>{label}</strong>
+            <small>{note}</small>
+            {aiConfig.provider_type === id && <Check size={13} className="settings-provider-check" />}
+          </button>
+        ))}
       </div>
 
-      <div className="settings-group" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {/* Provider Selector Grid */}
-        <div className="ai-provider-grid">
-          <button
-            className={`ai-provider-btn ${aiConfig.provider_type === 'gemini' ? 'active' : ''}`}
-            onClick={() =>
-              onUpdateAIConfig({
-                ...aiConfig,
-                provider_type: 'gemini',
-                model_name: 'gemini-3.7-flash',
-              })
-            }
-          >
-            <Sparkles size={16} />
-            <span>Google AI Studio</span>
-          </button>
-
-          <button
-            className={`ai-provider-btn ${aiConfig.provider_type === 'ollama' ? 'active' : ''}`}
-            onClick={() =>
-              onUpdateAIConfig({
-                ...aiConfig,
-                provider_type: 'ollama',
-                model_name: 'qwen3:4b-instruct-2507',
-              })
-            }
-          >
-            <Cpu size={16} />
-            <span>Ollama Local</span>
-          </button>
-
-          <button
-            className={`ai-provider-btn ${aiConfig.provider_type === 'openai_compatible' ? 'active' : ''}`}
-            onClick={() =>
-              onUpdateAIConfig({
-                ...aiConfig,
-                provider_type: 'openai_compatible',
-                model_name: 'qwen/qwen-2.5-7b-instruct',
-              })
-            }
-          >
-            <Wifi size={16} />
-            <span>OpenRouter / OpenAI</span>
-          </button>
-
-          <button
-            className={`ai-provider-btn ${aiConfig.provider_type === 'heuristic_offline' ? 'active' : ''}`}
-            onClick={() => onUpdateAIConfig({ ...aiConfig, provider_type: 'heuristic_offline' })}
-          >
-            <Database size={16} />
-            <span>Modo Offline</span>
-          </button>
-        </div>
-
-        {/* Google AI Studio (Gemini) Panel */}
+      <div className="settings-ai-config">
         {aiConfig.provider_type === 'gemini' && (
-          <div className="ai-config-subpanel">
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
-              <div>
-                <label className="settings-input-label">API Key de Google AI Studio</label>
-                <input
-                  type="password"
-                  className="settings-text-input"
-                  value={aiConfig.api_key || ''}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, api_key: e.target.value })}
-                  placeholder="AIzaSy..."
-                />
-              </div>
-
-              <div>
-                <label className="settings-input-label">Modelo Gemini</label>
-                <input
-                  type="text"
-                  className="settings-text-input"
-                  value={aiConfig.model_name}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
-                  placeholder="gemini-3.7-flash, gemini-3.7-pro"
-                />
-              </div>
+          <div className="settings-control-grid">
+            <div className="settings-field settings-field-span">
+              <label>Clave de Google AI Studio</label>
+              <input
+                type="password"
+                className="settings-text-input"
+                value={aiConfig.api_key || ''}
+                onChange={(event) => onUpdateAIConfig({ ...aiConfig, api_key: event.target.value })}
+                placeholder="AIzaSy…"
+                autoComplete="off"
+              />
+            </div>
+            <div className="settings-field settings-field-span">
+              <label>Modelo</label>
+              <input
+                className="settings-text-input"
+                value={aiConfig.model_name}
+                onChange={(event) => onUpdateAIConfig({ ...aiConfig, model_name: event.target.value })}
+              />
             </div>
           </div>
         )}
 
-        {/* Ollama Local Panel with 1-Click Installer */}
         {aiConfig.provider_type === 'ollama' && (
-          <div className="ai-config-subpanel">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '14px' }}>
-              <div>
-                <label className="settings-input-label">Endpoint de Ollama</label>
-                <input
-                  type="text"
-                  className="settings-text-input"
-                  value={aiConfig.ollama_endpoint}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, ollama_endpoint: e.target.value })}
-                  placeholder="http://localhost:11434"
-                />
-              </div>
-
-              <div>
-                <label className="settings-input-label">Modelo Local</label>
-                <input
-                  type="text"
-                  className="settings-text-input"
-                  value={aiConfig.model_name}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
-                  placeholder="qwen3:4b-instruct-2507, qwen2.5:3b"
-                />
-              </div>
-            </div>
-
-            {/* Intelligent Local Model Status & 1-Click Installer */}
-            <div className="ai-install-box">
-              <div className="ai-install-info">
-                {ollamaStatus?.is_model_installed ? (
-                  <>
-                    <span className="ai-badge-status ready">
-                      <CheckCircle2 size={12} /> Listo
-                    </span>
-                    <span>Modelo local <strong>Qwen3-4B</strong> instalado y listo para trabajar.</span>
-                  </>
-                ) : isInstallingOllama ? (
-                  <>
-                    <Loader2 size={15} className="spin-anim" color="var(--accent-gold)" />
-                    <span>Instalando modelo <strong>Qwen3-4B-Instruct</strong> desde Ollama...</span>
-                  </>
+          <>
+            <div className={`settings-service-hero ${ollamaReady ? 'ready' : ollamaInstalled ? 'waiting' : 'missing'}`}>
+              <span className="settings-service-icon">
+                {!ollamaResolved || checkingOllama || installingOllama ? (
+                  <Loader2 size={19} className="spin-anim" />
+                ) : ollamaReady ? (
+                  <Check size={19} />
                 ) : (
-                  <>
-                    <span className="ai-badge-status missing">
-                      <AlertCircle size={12} /> No Instalado
-                    </span>
-                    <span>Descarga el modelo <strong>Qwen3-4B-Instruct-2507</strong> para procesar sin internet.</span>
-                  </>
+                  <Cpu size={19} />
                 )}
+              </span>
+              <div className="settings-service-copy">
+                <strong>Ollama</strong>
+                <span>
+                  {!ollamaResolved || checkingOllama
+                    ? 'Preparando servicio…'
+                    : installingOllama
+                      ? `Descargando ${aiConfig.model_name}…`
+                      : ollamaReady
+                        ? `${ollamaStatus?.model_name} · inicio automático activo`
+                        : ollamaRunning
+                          ? 'Servicio activo · falta el modelo'
+                          : ollamaInstalled
+                            ? 'Instalado · intentando iniciar'
+                          : 'IA privada en este equipo'}
+                </span>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {!ollamaStatus?.is_model_installed && (
-                  <button
-                    className="btn-install-model"
-                    onClick={handleInstallOllamaModel}
-                    disabled={isInstallingOllama}
-                  >
-                    {isInstallingOllama ? (
-                      <>
-                        <Loader2 size={13} className="spin-anim" />
-                        <span>Descargando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <DownloadCloud size={14} />
-                        <span>Instalar Qwen3-4B</span>
-                      </>
-                    )}
-                  </button>
-                )}
-
+              <span className="settings-service-state">
+                {!ollamaResolved || checkingOllama ? 'Comprobando' : ollamaReady ? 'Listo' : ollamaInstalled ? 'Instalado' : 'Opcional'}
+              </span>
+              {ollamaResolved && !checkingOllama && !ollamaReady && !ollamaInstalled && (
                 <button
-                  className="icon-btn"
-                  onClick={refreshOllamaStatus}
-                  title="Verificar estado de Ollama"
-                  style={{ padding: '6px', borderRadius: '6px' }}
+                  type="button"
+                  className="settings-primary-action"
+                  onClick={installOllama}
+                  disabled={installingOllama}
                 >
+                  <DownloadCloud size={14} />
+                  {installingOllama ? 'Instalando…' : 'Activar'}
+                </button>
+              )}
+              {ollamaResolved && !checkingOllama && ollamaInstalled && ollamaRunning && !ollamaReady && (
+                <button
+                  type="button"
+                  className="settings-primary-action"
+                  onClick={installOllama}
+                  disabled={installingOllama}
+                >
+                  <DownloadCloud size={14} />
+                  {installingOllama ? 'Descargando…' : 'Descargar modelo'}
+                </button>
+              )}
+              {ollamaResolved && !checkingOllama && ollamaInstalled && !ollamaRunning && (
+                <button type="button" className="settings-quiet-action" onClick={refreshOllama}>
+                  <RefreshCw size={14} /> Reintentar
+                </button>
+              )}
+              {!checkingOllama && ollamaReady && (
+                <button type="button" className="settings-icon-action" onClick={refreshOllama} title="Comprobar">
                   <RefreshCw size={14} />
                 </button>
-              </div>
+              )}
             </div>
 
             {ollamaError && (
-              <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#ef4444' }}>
-                {ollamaError}
-              </div>
+              <div className="settings-inline-error"><AlertCircle size={14} /> {ollamaError}</div>
             )}
-          </div>
-        )}
 
-        {/* Cloud API Panel */}
-        {aiConfig.provider_type === 'openai_compatible' && (
-          <div className="ai-config-subpanel">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
-              <div>
-                <label className="settings-input-label">Base URL</label>
+            <div className="settings-control-grid settings-ai-local-fields">
+              <div className="settings-field settings-field-span">
+                <label>Modelo local</label>
                 <input
-                  type="text"
-                  className="settings-text-input"
-                  value={aiConfig.base_url || ''}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, base_url: e.target.value })}
-                  placeholder="https://openrouter.ai/api/v1"
-                />
-              </div>
-
-              <div>
-                <label className="settings-input-label">Modelo</label>
-                <input
-                  type="text"
                   className="settings-text-input"
                   value={aiConfig.model_name}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, model_name: e.target.value })}
-                  placeholder="qwen/qwen-2.5-7b-instruct"
+                  onChange={(event) => onUpdateAIConfig({ ...aiConfig, model_name: event.target.value })}
+                  placeholder="qwen2.5:3b"
                 />
               </div>
-
-              <div>
-                <label className="settings-input-label">API Key</label>
+              <div className="settings-field settings-field-span">
+                <label>Dirección</label>
                 <input
-                  type="password"
                   className="settings-text-input"
-                  value={aiConfig.api_key || ''}
-                  onChange={(e) => onUpdateAIConfig({ ...aiConfig, api_key: e.target.value })}
-                  placeholder="sk-..."
+                  value={aiConfig.ollama_endpoint}
+                  onChange={(event) => onUpdateAIConfig({ ...aiConfig, ollama_endpoint: event.target.value })}
+                  placeholder="http://localhost:11434"
                 />
               </div>
+            </div>
+          </>
+        )}
+
+        {aiConfig.provider_type === 'openai_compatible' && (
+          <div className="settings-control-grid">
+            <div className="settings-field settings-field-span">
+              <label>Dirección API</label>
+              <input
+                className="settings-text-input"
+                value={aiConfig.base_url || ''}
+                onChange={(event) => onUpdateAIConfig({ ...aiConfig, base_url: event.target.value })}
+                placeholder="https://openrouter.ai/api/v1"
+              />
+            </div>
+            <div className="settings-field">
+              <label>Modelo</label>
+              <input
+                className="settings-text-input"
+                value={aiConfig.model_name}
+                onChange={(event) => onUpdateAIConfig({ ...aiConfig, model_name: event.target.value })}
+              />
+            </div>
+            <div className="settings-field">
+              <label>Clave API</label>
+              <input
+                type="password"
+                className="settings-text-input"
+                value={aiConfig.api_key || ''}
+                onChange={(event) => onUpdateAIConfig({ ...aiConfig, api_key: event.target.value })}
+                placeholder="sk-…"
+                autoComplete="off"
+              />
             </div>
           </div>
         )}
 
-        {/* Connection Test & Privacy Row */}
-        <div className="settings-row" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', paddingLeft: 0, paddingRight: 0 }}>
-          <div className="settings-label-col">
-            <span className="settings-row-title">Verificación de Conexión</span>
-            <span className="settings-row-desc">Comprueba la disponibilidad del motor activo.</span>
-          </div>
-
-          <button
-            className="btn-select-default"
-            onClick={handleTestConnection}
-            disabled={testingAI}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            {testingAI ? <Loader2 size={13} className="spin-anim" /> : <Sparkles size={13} />}
-            <span>{testingAI ? 'Comprobando...' : 'Probar Conexión'}</span>
-          </button>
-        </div>
-
-        {testStatus && (
-          <div
-            className={`ai-test-status-banner ${testStatus.is_connected ? 'success' : 'error'}`}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '8px',
-              backgroundColor: testStatus.is_connected ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-              border: `1px solid ${testStatus.is_connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-              color: testStatus.is_connected ? '#22c55e' : '#ef4444',
-              fontSize: '0.85rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>{testStatus.message}</span>
-            {testStatus.latency_ms !== undefined && (
-              <span style={{ fontSize: '0.78rem', opacity: 0.85 }}>Latencia: {testStatus.latency_ms} ms</span>
-            )}
+        {aiConfig.provider_type === 'heuristic_offline' && (
+          <div className="settings-offline-note">
+            <Database size={18} />
+            <div><strong>Biblioteca local</strong><span>Estudio básico sin cuentas ni conexión.</span></div>
           </div>
         )}
+      </div>
 
-        {/* Privacy Row with Switch */}
-        <div className="settings-row" style={{ paddingLeft: 0, paddingRight: 0, borderBottom: 'none' }}>
-          <div className="settings-label-col">
-            <span className="settings-row-title">Privacidad Estricta (Local-Only)</span>
-            <span className="settings-row-desc">Bloquear cualquier consulta hacia servidores externos.</span>
-          </div>
-
+      <footer className="settings-ai-footer">
+        <label className="settings-inline-toggle">
+          <span>Solo conexiones locales</span>
           <button
             type="button"
             className={`verbum-switch ${aiConfig.local_only_privacy ? 'active' : ''}`}
-            onClick={() =>
-              onUpdateAIConfig({ ...aiConfig, local_only_privacy: !aiConfig.local_only_privacy })
-            }
-            title={aiConfig.local_only_privacy ? 'Privacidad local activa' : 'Permitir conexiones en la nube'}
-            aria-label="Alternar privacidad estricta"
+            onClick={() => onUpdateAIConfig({ ...aiConfig, local_only_privacy: !aiConfig.local_only_privacy })}
+            aria-label="Alternar conexiones locales"
           >
-            <div className="verbum-switch-knob" />
+            <i className="verbum-switch-knob" />
           </button>
+        </label>
+
+        {aiConfig.provider_type !== 'heuristic_offline' && (
+          <button type="button" className="settings-quiet-action" onClick={testConnection} disabled={testing}>
+            {testing ? <Loader2 size={13} className="spin-anim" /> : <Sparkles size={13} />}
+            {testing ? 'Probando…' : 'Probar'}
+          </button>
+        )}
+      </footer>
+
+      {testStatus && (
+        <div className={`settings-connection-result ${testStatus.is_connected ? 'success' : 'error'}`}>
+          {testStatus.is_connected ? <Check size={14} /> : <AlertCircle size={14} />}
+          <span>{testStatus.message}</span>
+          {testStatus.latency_ms !== undefined && <small>{testStatus.latency_ms} ms</small>}
         </div>
-      </div>
+      )}
     </section>
   );
 };

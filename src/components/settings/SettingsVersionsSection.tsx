@@ -1,36 +1,6 @@
 import React from 'react';
+import { BookOpen, Check } from 'lucide-react';
 import { BibleVersion } from '../../types';
-import { BookOpen } from 'lucide-react';
-
-const VersionSettingsRow = React.memo<{
-  version: BibleVersion;
-  isCurrent: boolean;
-  onSelect: (id: string) => void;
-}>(({ version: v, isCurrent, onSelect }) => {
-  return (
-    <div className="settings-row">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-            {v.name} ({v.short_name})
-          </span>
-          <span className="version-lang-pill">{v.language.toUpperCase()}</span>
-          {isCurrent && <span className="default-version-badge">Predeterminada</span>}
-        </div>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Licencia: {v.license} · Empaquetado localmente en SQLite
-        </span>
-      </div>
-
-      <button
-        className={`btn-select-default ${isCurrent ? 'active' : ''}`}
-        onClick={() => onSelect(v.id)}
-      >
-        {isCurrent ? 'Seleccionada ✓' : 'Usar por defecto'}
-      </button>
-    </div>
-  );
-});
 
 interface SettingsVersionsSectionProps {
   versions: BibleVersion[];
@@ -43,23 +13,38 @@ export const SettingsVersionsSection: React.FC<SettingsVersionsSectionProps> = (
   currentVersion,
   onSelectDefaultVersion,
 }) => {
+  const selected = versions.find((version) => version.id === currentVersion) ?? versions[0];
+
   return (
-    <section className="settings-section">
-      <div className="settings-section-header">
-        <BookOpen size={18} color="var(--accent-gold)" />
-        <h2>Versiones Bíblicas Instaladas (100% Offline)</h2>
+    <section className="settings-block">
+      <div className="settings-block-title">
+        <div><strong>Edición principal</strong><span>Se abrirá al iniciar Verbum.</span></div>
+        <BookOpen size={17} />
       </div>
 
-      <div className="settings-group">
-        {versions.map((v) => (
-          <VersionSettingsRow
-            key={v.id}
-            version={v}
-            isCurrent={currentVersion === v.id}
-            onSelect={onSelectDefaultVersion}
-          />
+      <select
+        className="settings-text-input settings-version-select"
+        value={selected?.id || ''}
+        onChange={(event) => onSelectDefaultVersion(event.target.value)}
+        disabled={!versions.length}
+      >
+        {versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            {version.name} ({version.short_name})
+          </option>
         ))}
-      </div>
+      </select>
+
+      {selected && (
+        <div className="settings-version-preview">
+          <span className="settings-version-monogram">{selected.short_name.slice(0, 3)}</span>
+          <div>
+            <strong>{selected.name}</strong>
+            <span>{selected.language.toUpperCase()} · disponible sin conexión</span>
+          </div>
+          <Check size={15} />
+        </div>
+      )}
     </section>
   );
 };

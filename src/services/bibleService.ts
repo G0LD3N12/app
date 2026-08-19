@@ -389,6 +389,7 @@ export async function checkOllamaModelStatus(
   }
 
   return {
+    is_ollama_installed: false,
     is_ollama_running: false,
     is_model_installed: false,
     model_name: modelName,
@@ -410,6 +411,7 @@ export async function installOrPullOllamaModel(
   }
 
   return {
+    is_ollama_installed: true,
     is_ollama_running: true,
     is_model_installed: true,
     model_name: modelName,

@@ -28,7 +28,16 @@ impl AudioEngineService {
     }
 
     pub async fn check_voicebox_status(&self, url: Option<&str>) -> VoiceboxStatus {
-        self.voicebox.check_health(url).await
+        let mut status = self.voicebox.check_health(url).await;
+        status.installed = installer::is_voicebox_installed();
+
+        if !status.available && status.installed {
+            let _ = installer::start_installed_voicebox(url).await;
+            status = self.voicebox.check_health(url).await;
+            status.installed = true;
+        }
+
+        status
     }
 
     pub async fn get_voicebox_profiles(&self, url: Option<&str>) -> Result<Vec<VoiceProfile>, String> {
@@ -97,7 +106,7 @@ impl AudioEngineService {
         }
     }
 
-    pub async fn play_audio_bytes(&self, bytes: &[u8], speed: f32, offset_sec: f32) -> Result<u64, String> {
+    pub async fn play_audio_bytes(&self, bytes: &[u8], speed: f32, offset_sec: f32) -> Result<player::PlaybackSession, String> {
         self.player.play_bytes(bytes, speed, offset_sec).await
     }
 

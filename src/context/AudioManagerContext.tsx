@@ -58,6 +58,13 @@ interface AudioManagerContextType {
   closeAudioBar: () => void;
 }
 
+interface NativePlaybackSession {
+  seq: number;
+  applied_speed: number;
+  source_offset_sec: number;
+  playback_duration_sec?: number;
+}
+
 const AudioManagerContext = createContext<AudioManagerContextType | null>(null);
 
 export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -79,6 +86,9 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const isCancelledRef = useRef<boolean>(false);
   const isNativePausedRef = useRef<boolean>(false);
   const progressIntervalRef = useRef<any>(null);
+  // Coalesces rapid speed-button clicks so only the latest requested restart
+  // is allowed to take ownership of native playback.
+  const speedChangeTokenRef = useRef<number>(0);
   // Token that invalidates async chains when a new playback takes over
   const playTokenRef = useRef<number>(0);
   // Always-fresh view of the queue (including prefetched audio), used by the
@@ -187,6 +197,8 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const stop = useCallback(async () => {
     isCancelledRef.current = true;
     playTokenRef.current += 1;
+    speedChangeTokenRef.current += 1;
+    playbackStateRef.current = 'idle';
     isNativePausedRef.current = false;
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -256,17 +268,26 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
     []
   );
 
-  // Play a specific item at index. Verse advancement is driven by the exit of
-  // the native player process (play_native_audio resolves on real completion),
-  // never by a wall-clock estimate, so verses are never cut short.
+  // Play a specific item at index. Rust first confirms the physical playback
+  // rate and transformed duration, then verse advancement is driven by the
+  // native process exit rather than by the visual progress clock.
   // `resumeFromSec` restarts the verse mid-stream (speed change mid-verse).
   const playItemAtIndex = useCallback(
-    async (idx: number, items: NarrationItem[], settings: VoiceSettings, resumeFromSec?: number) => {
+    async (
+      idx: number,
+      items: NarrationItem[],
+      settings: VoiceSettings,
+      resumeFromSec?: number,
+      reuseActiveEngine: boolean = false
+    ) => {
       if (idx < 0 || idx >= items.length) {
         setPlaybackState('completed');
         return;
       }
 
+      // Any explicit navigation/play request supersedes a pending speed-only
+      // restart that may still be waiting for the old process to stop.
+      speedChangeTokenRef.current += 1;
       const myToken = ++playTokenRef.current;
       isCancelledRef.current = false;
       setCurrentIndex(idx);
@@ -277,7 +298,9 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const shouldUseVoicebox = settings.preferredEngine === 'voicebox';
       let engineToUse: 'voicebox' | 'system' = shouldUseVoicebox ? 'voicebox' : 'system';
 
-      if (shouldUseVoicebox) {
+      // A speed-only restart already has a healthy, active Voicebox session.
+      // Re-probing HTTP health here adds a noticeable dead spot to the button.
+      if (shouldUseVoicebox && !reuseActiveEngine) {
         const vbStatus = await checkVoiceboxStatus(settings.voiceboxUrl);
         setVoiceboxStatus(vbStatus);
         if (!vbStatus.available) {
@@ -305,17 +328,17 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
 
           if (audioBase64) {
-            // Read the speed at spawn time so mid-verse changes apply both
-            // here (restart) and on every subsequent verse of the chain
-            const spawnSpeed = speedRef.current || 1.0;
+            const requestedSpeed = speedRef.current || 1.0;
             const startAt = Math.max(0, Math.min(resumeFromSec || 0, dur - 0.2));
 
-            setPlaybackState('playing');
+            playbackStateRef.current = 'requested';
+            setPlaybackState('requested');
             setDuration(dur);
             setCurrentTime(startAt);
+            audioClockRef.current = startAt;
 
             setQueue((prev) =>
-              prev.map((it, i) => (i === idx ? { ...it, audioBase64, duration: dur, status: 'playing' } : it))
+              prev.map((it, i) => (i === idx ? { ...it, audioBase64, duration: dur, status: 'requested' } : it))
             );
 
             // Trigger sequential prefetch for next item (1 ahead)
@@ -323,42 +346,68 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
               prefetchNextItem(idx + 1, items, settings);
             }
 
-            // UI-only progress clock; the real end-of-verse signal comes from
-            // the native player process exit below
+            // Do not start the ring until Rust confirms that the transformed
+            // audio is ready and the native process is actually running.
+            const session = await invoke<NativePlaybackSession>('start_native_audio', {
+              audioBase64,
+              speed: requestedSpeed,
+              offsetSec: startAt,
+            });
+            if (myToken !== playTokenRef.current || isCancelledRef.current) return;
+
+            const appliedSpeed = session.applied_speed;
+            speedRef.current = appliedSpeed;
+            setSpeedState(appliedSpeed);
+            playbackStateRef.current = 'playing';
+            setPlaybackState('playing');
+            setQueue((prev) =>
+              prev.map((it, i) => (i === idx ? { ...it, status: 'playing' } : it))
+            );
+
+            // The ring uses the transformed file's measured wall duration,
+            // not an optimistic frontend multiplication by the selected rate.
+            const remainingSourceSec = Math.max(0, dur - session.source_offset_sec);
+            const playbackWallDuration =
+              session.playback_duration_sec && session.playback_duration_sec > 0
+                ? session.playback_duration_sec
+                : remainingSourceSec / appliedSpeed;
             isNativePausedRef.current = false;
-            let currentSec = startAt;
-            audioClockRef.current = startAt;
-            let lastTick = Date.now();
+            let elapsedWallSec = 0;
+            let lastTick = performance.now();
 
             if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
 
-            progressIntervalRef.current = setInterval(() => {
+            const progressInterval = setInterval(() => {
               if (isCancelledRef.current || myToken !== playTokenRef.current) {
-                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                clearInterval(progressInterval);
+                if (progressIntervalRef.current === progressInterval) {
+                  progressIntervalRef.current = null;
+                }
                 return;
               }
 
-              const now = Date.now();
+              const now = performance.now();
               const delta = (now - lastTick) / 1000;
               lastTick = now;
 
               if (!isNativePausedRef.current) {
-                currentSec += delta * spawnSpeed;
+                elapsedWallSec = Math.min(playbackWallDuration, elapsedWallSec + delta);
+                const fraction = Math.min(1, elapsedWallSec / Math.max(0.001, playbackWallDuration));
+                const currentSec = session.source_offset_sec + remainingSourceSec * fraction;
                 audioClockRef.current = currentSec;
                 setCurrentTime(Math.min(dur, currentSec));
               }
             }, 80);
+            progressIntervalRef.current = progressInterval;
 
-            // Play through the Rust native PipeWire/PulseAudio/ALSA sink.
-            // Resolves exactly when the audio finished playing.
-            const outcome = await invoke<'completed' | 'superseded' | 'failed'>('play_native_audio', {
-              audioBase64,
-              speed: spawnSpeed,
-              offsetSec: startAt,
+            const outcome = await invoke<'completed' | 'superseded' | 'failed'>('wait_native_audio', {
+              seq: session.seq,
             });
 
-            if (progressIntervalRef.current) {
-              clearInterval(progressIntervalRef.current);
+            // Clear only this playback session's clock. A speed change may
+            // already have installed the replacement session's interval.
+            clearInterval(progressInterval);
+            if (progressIntervalRef.current === progressInterval) {
               progressIntervalRef.current = null;
             }
             if (myToken !== playTokenRef.current || isCancelledRef.current) return;
@@ -366,6 +415,9 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             if (outcome === 'failed') {
               console.warn('Native audio player exited with an error; moving to next item');
+            } else {
+              audioClockRef.current = dur;
+              setCurrentTime(dur);
             }
 
             // Brief natural breath between verses so transitions feel fluid
@@ -526,6 +578,7 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 
   const pause = useCallback(async () => {
+    playbackStateRef.current = 'paused';
     if (activeEngineType === 'voicebox') {
       try {
         await invoke('pause_native_audio');
@@ -540,6 +593,7 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [activeEngineType]);
 
   const resume = useCallback(async () => {
+    playbackStateRef.current = 'playing';
     if (activeEngineType === 'voicebox') {
       try {
         await invoke('resume_native_audio');
@@ -587,10 +641,12 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const setSpeed = useCallback(
     (newSpeed: number) => {
       const prevSpeed = speedRef.current;
-      setSpeedState(newSpeed);
-      speedRef.current = newSpeed;
+      const normalizedSpeed = Math.max(0.5, Math.min(2, newSpeed));
+      setSpeedState(normalizedSpeed);
+      speedRef.current = normalizedSpeed;
+      systemSpeechEngineRef.current.setRate(normalizedSpeed);
       if (audioElementRef.current) {
-        audioElementRef.current.playbackRate = newSpeed;
+        audioElementRef.current.playbackRate = normalizedSpeed;
       }
 
       // A native player process cannot be re-rated while running, so apply the
@@ -598,15 +654,37 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // position it was at. The old wait chain resolves 'superseded' and
       // stands down without advancing.
       if (
-        prevSpeed !== newSpeed &&
+        prevSpeed !== normalizedSpeed &&
         activeEngineTypeRef.current === 'voicebox' &&
         playbackStateRef.current === 'playing'
       ) {
         const idx = currentIndexRef.current;
         const item = queueRef.current[idx];
         if (item?.audioBase64) {
-          invoke('stop_native_audio').catch(() => {});
-          playItemAtIndex(idx, queueRef.current, settingsRef.current, audioClockRef.current);
+          const restartAt = audioClockRef.current;
+          const changeToken = ++speedChangeTokenRef.current;
+
+          // Invalidate the old async completion chain immediately so it can
+          // never advance the queue while native playback is being replaced.
+          playTokenRef.current += 1;
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+
+          void (async () => {
+            try {
+              await invoke('stop_native_audio');
+            } catch {
+              // start_native_audio also supersedes the previous process.
+            }
+            if (
+              changeToken !== speedChangeTokenRef.current ||
+              playbackStateRef.current !== 'playing' ||
+              currentIndexRef.current !== idx
+            ) return;
+            playItemAtIndex(idx, queueRef.current, settingsRef.current, restartAt, true);
+          })();
         }
       }
     },

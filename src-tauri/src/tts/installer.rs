@@ -1,9 +1,12 @@
 use crate::tts::types::VoiceProfile;
 use crate::tts::voicebox::VoiceboxClient;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::process::Command;
+use std::fs::OpenOptions;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::time::Duration;
+
+static VOICEBOX_START_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceboxSetupResult {
@@ -42,14 +45,115 @@ pub fn find_uv_binary() -> Option<PathBuf> {
     None
 }
 
-pub async fn start_or_setup_voicebox(endpoint: Option<&str>) -> Result<VoiceboxSetupResult, String> {
+fn voicebox_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    PathBuf::from(home)
+        .join(".local")
+        .join("share")
+        .join("verbum")
+        .join("voicebox")
+}
+
+fn voicebox_files_are_installed(target_dir: &Path) -> bool {
+    target_dir.join("server.py").is_file()
+}
+
+pub fn is_voicebox_installed() -> bool {
+    voicebox_files_are_installed(&voicebox_dir()) && find_uv_binary().is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::voicebox_files_are_installed;
+    use tempfile::tempdir;
+
+    #[test]
+    fn persisted_server_file_is_the_voicebox_install_marker() {
+        let dir = tempdir().unwrap();
+        assert!(!voicebox_files_are_installed(dir.path()));
+
+        std::fs::write(dir.path().join("server.py"), "# managed by Verbum").unwrap();
+        assert!(voicebox_files_are_installed(dir.path()));
+    }
+}
+
+async fn wait_until_ready(client: &VoiceboxClient, endpoint: &str, attempts: usize) -> bool {
+    for _ in 0..attempts {
+        tokio::time::sleep(Duration::from_millis(350)).await;
+        if client.check_health(Some(endpoint)).await.available {
+            return true;
+        }
+    }
+    false
+}
+
+/// Starts an existing managed Voicebox installation without downloading or
+/// rewriting anything. This is safe to call on every application launch.
+pub async fn start_installed_voicebox(endpoint: Option<&str>) -> Result<bool, String> {
+    let clean_endpoint = endpoint.unwrap_or("http://127.0.0.1:17493");
+    let client = VoiceboxClient::new();
+    let _start_guard = VOICEBOX_START_LOCK.lock().await;
+    if client.check_health(Some(clean_endpoint)).await.available {
+        return Ok(true);
+    }
+    if !is_voicebox_installed() {
+        return Ok(false);
+    }
+
+    let target_dir = voicebox_dir();
+    let uv_bin = find_uv_binary()
+        .ok_or_else(|| "Voicebox está instalado pero UV no está disponible".to_string())?;
+    let server_py = target_dir.join("server.py");
+    let log_path = target_dir.join("server.log");
+    let port = reqwest::Url::parse(clean_endpoint)
+        .ok()
+        .and_then(|url| url.port_or_known_default())
+        .unwrap_or(17493);
+    let stdout = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .map_err(|e| format!("No se pudo abrir el registro de Voicebox: {}", e))?;
+    let stderr = stdout
+        .try_clone()
+        .map_err(|e| format!("No se pudo preparar el registro de Voicebox: {}", e))?;
+
+    Command::new(uv_bin)
+        .current_dir(&target_dir)
+        .args([
+            "run",
+            "--with",
+            "fastapi",
+            "--with",
+            "uvicorn",
+            "--with",
+            "edge-tts",
+            "python3",
+        ])
+        .arg(&server_py)
+        .env("PORT", port.to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr))
+        .spawn()
+        .map_err(|e| format!("No se pudo iniciar Voicebox: {}", e))?;
+
+    Ok(wait_until_ready(&client, clean_endpoint, 24).await)
+}
+
+pub async fn start_or_setup_voicebox(
+    endpoint: Option<&str>,
+) -> Result<VoiceboxSetupResult, String> {
     let client = VoiceboxClient::new();
     let clean_endpoint = endpoint.unwrap_or("http://127.0.0.1:17493");
 
     // 1. Check if Voicebox is already running
     let status = client.check_health(Some(clean_endpoint)).await;
     if status.available {
-        let profiles = client.get_profiles(Some(clean_endpoint)).await.unwrap_or_default();
+        let profiles = client
+            .get_profiles(Some(clean_endpoint))
+            .await
+            .unwrap_or_default();
         return Ok(VoiceboxSetupResult {
             success: true,
             is_running: true,
@@ -59,19 +163,34 @@ pub async fn start_or_setup_voicebox(endpoint: Option<&str>) -> Result<VoiceboxS
         });
     }
 
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    let target_dir = PathBuf::from(&home).join(".local").join("share").join("verbum").join("voicebox");
+    // Existing installations are restarted automatically and never shown as
+    // missing merely because their background process stopped.
+    if start_installed_voicebox(Some(clean_endpoint)).await? {
+        let profiles = client
+            .get_profiles(Some(clean_endpoint))
+            .await
+            .unwrap_or_default();
+        return Ok(VoiceboxSetupResult {
+            success: true,
+            is_running: true,
+            message: "Voicebox iniciado automáticamente.".to_string(),
+            endpoint: clean_endpoint.to_string(),
+            profiles,
+        });
+    }
+
+    let target_dir = voicebox_dir();
     let _ = std::fs::create_dir_all(&target_dir);
 
     // 2. Ensure UV is available (download standalone if missing)
-    let uv_bin = if let Some(p) = find_uv_binary() {
-        p
-    } else {
+    if find_uv_binary().is_none() {
         // Install UV via official fast shell script
         let install_uv = "curl -LsSf https://astral.sh/uv/install.sh | sh";
         let _ = Command::new("sh").arg("-c").arg(install_uv).output();
-        find_uv_binary().unwrap_or_else(|| PathBuf::from("uv"))
-    };
+        if find_uv_binary().is_none() {
+            return Err("No se pudo instalar UV para ejecutar Voicebox.".to_string());
+        }
+    }
 
     // 3. Generate self-contained High-Fidelity Neural TTS Server
     let server_py = target_dir.join("server.py");
@@ -172,35 +291,25 @@ if __name__ == "__main__":
     let _ = std::fs::write(&server_py, server_code);
 
     // 4. Kill any old hung process on port 17493
-    let _ = Command::new("sh").arg("-c").arg("fuser -k 17493/tcp || true").output();
+    let _ = Command::new("sh")
+        .arg("-c")
+        .arg("fuser -k 17493/tcp || true")
+        .output();
 
-    // 5. Run automated installation and start using UV in background
-    let run_cmd = format!(
-        r#"
-        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-        cd "{}"
-        "{}" run --with fastapi --with uvicorn --with edge-tts python3 server.py > server.log 2>&1 &
-        "#,
-        target_dir.display(),
-        uv_bin.display()
-    );
-
-    let _ = Command::new("sh").arg("-c").arg(&run_cmd).spawn();
-
-    // 6. Wait for the server to accept connections
-    for _ in 0..20 {
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let check = client.check_health(Some(clean_endpoint)).await;
-        if check.available {
-            let profiles = client.get_profiles(Some(clean_endpoint)).await.unwrap_or_default();
-            return Ok(VoiceboxSetupResult {
-                success: true,
-                is_running: true,
-                message: "✓ Voicebox instalado y configurado con voces neuronales de alta fidelidad.".to_string(),
-                endpoint: clean_endpoint.to_string(),
-                profiles,
-            });
-        }
+    // 5. Start the newly persisted installation through the same lifecycle
+    // path used on every subsequent launch.
+    if start_installed_voicebox(Some(clean_endpoint)).await? {
+        let profiles = client
+            .get_profiles(Some(clean_endpoint))
+            .await
+            .unwrap_or_default();
+        return Ok(VoiceboxSetupResult {
+            success: true,
+            is_running: true,
+            message: "Voicebox instalado. Se iniciará automáticamente con Verbum.".to_string(),
+            endpoint: clean_endpoint.to_string(),
+            profiles,
+        });
     }
 
     Ok(VoiceboxSetupResult {

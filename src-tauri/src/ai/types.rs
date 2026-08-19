@@ -176,6 +176,8 @@ pub struct AIConnectionStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaModelInstallStatus {
+    #[serde(default)]
+    pub is_ollama_installed: bool,
     pub is_ollama_running: bool,
     pub is_model_installed: bool,
     pub model_name: String,

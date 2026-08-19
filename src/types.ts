@@ -254,6 +254,7 @@ export interface AIConnectionStatus {
 }
 
 export interface OllamaModelInstallStatus {
+  is_ollama_installed: boolean;
   is_ollama_running: boolean;
   is_model_installed: boolean;
   model_name: string;
@@ -261,4 +262,3 @@ export interface OllamaModelInstallStatus {
   message: string;
   progress_percent?: number;
 }
-

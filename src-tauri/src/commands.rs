@@ -169,21 +169,29 @@ pub async fn auto_setup_voicebox(
     crate::tts::installer::start_or_setup_voicebox(endpoint.as_deref()).await
 }
 
-// Resolves when the spawned player process exits, so the frontend advances
-// verses on real audio completion instead of a wall-clock estimate.
+// Starts native playback only after the requested rate has been physically
+// applied. The returned metadata is the source of truth for frontend timing.
 #[tauri::command]
-pub async fn play_native_audio(
+pub async fn start_native_audio(
     state: State<'_, AppState>,
     audio_base64: String,
     speed: Option<f32>,
     offset_sec: Option<f32>,
-) -> Result<crate::tts::player::PlaybackOutcome, String> {
+) -> Result<crate::tts::player::PlaybackSession, String> {
     use base64::prelude::*;
     let bytes = BASE64_STANDARD.decode(&audio_base64).map_err(|e| format!("Base64 decode error: {}", e))?;
-    let seq = state
-        .tts
+    state.tts
         .play_audio_bytes(&bytes, speed.unwrap_or(1.0), offset_sec.unwrap_or(0.0))
-        .await?;
+        .await
+}
+
+// Resolves on the real native process exit. Keeping this separate from start
+// lets the UI begin its progress clock from backend-confirmed timing data.
+#[tauri::command]
+pub async fn wait_native_audio(
+    state: State<'_, AppState>,
+    seq: u64,
+) -> Result<crate::tts::player::PlaybackOutcome, String> {
     Ok(state.tts.wait_playback(seq).await)
 }
 

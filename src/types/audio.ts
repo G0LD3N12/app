@@ -44,6 +44,7 @@ export interface VoiceProfile {
 
 export interface VoiceboxStatus {
   available: boolean;
+  installed: boolean;
   url: string;
   version?: string;
   active_engine?: string;
