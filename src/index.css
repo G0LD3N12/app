@@ -7206,7 +7206,10 @@ select:focus-visible {
   --windows-chrome-control-pressed: color-mix(in srgb, var(--text-primary) 11%, transparent);
   --windows-chrome-control-border: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --windows-chrome-control-highlight: color-mix(in srgb, white 6%, transparent);
-  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --windows-canvas-inset: color-mix(in srgb, white 12%, transparent);
+  --windows-canvas-relief: color-mix(in srgb, black 55%, transparent);
+  --windows-canvas-relief-contact: color-mix(in srgb, black 40%, transparent);
 }
 
 .windows-native-effects .app-atmosphere {
@@ -7286,26 +7289,48 @@ select:focus-visible {
 }
 
 .windows-native-effects .app-sidebar::after {
-  content: '';
-  position: absolute;
-  top: 12px;
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  z-index: 3;
-  pointer-events: none;
-  background-color: var(--windows-canvas-seam);
+  content: none;
 }
 
 .windows-native-effects .app-main-viewport {
+  /* D · Relieve del recorte (sidebar-relief-preview_2.html).
+     overflow:visible so the rounded box-shadow can land on the acrylic;
+     negative spread was clipping the lift down to nothing on Mica. */
+  overflow: visible;
   background-color: color-mix(in srgb, var(--bg-app) 98%, transparent);
   margin-left: -1px;
   border-top-left-radius: 12px;
+  z-index: 26;
+  box-shadow:
+    inset 1px 0 0 var(--windows-canvas-inset),
+    -1px 0 0 var(--windows-canvas-seam),
+    -2px 0 6px var(--windows-canvas-relief-contact),
+    -8px 4px 20px var(--windows-canvas-relief);
+  transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              border-top-left-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.windows-native-effects .app-main-viewport::after {
+  content: none;
+}
+
+.windows-native-effects .app-main-viewport::before {
+  border-top-left-radius: 12px;
+  box-shadow: inset 1px 0 0 var(--windows-canvas-inset);
 }
 
 .windows-native-effects .app-body-layout.zen-mode .app-main-viewport {
+  overflow: hidden;
   margin-left: 0;
   border-top-left-radius: 0;
+  z-index: auto;
+  box-shadow: none;
+}
+
+.windows-native-effects .app-body-layout.zen-mode .app-main-viewport::before {
+  border-top-left-radius: 0;
+  box-shadow: none;
 }
 
 .windows-native-effects[data-theme="white"] .app-header,
@@ -7318,6 +7343,15 @@ select:focus-visible {
 .windows-native-effects[data-theme="light"] .app-body-layout,
 .windows-native-effects[data-theme="sepia"] .app-body-layout {
   background-color: color-mix(in srgb, var(--bg-app) 42%, transparent);
+}
+
+.windows-native-effects[data-theme="white"],
+.windows-native-effects[data-theme="light"],
+.windows-native-effects[data-theme="sepia"] {
+  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --windows-canvas-inset: color-mix(in srgb, white 70%, transparent);
+  --windows-canvas-relief: color-mix(in srgb, black 18%, transparent);
+  --windows-canvas-relief-contact: color-mix(in srgb, black 10%, transparent);
 }
 
 .reader-pref-popover,
