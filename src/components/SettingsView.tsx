@@ -140,7 +140,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
       event.preventDefault();
-      first.focus();
+      last.focus();
     }
   };
 
@@ -174,92 +174,89 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </button>
 
         <div className="settings-shell">
-        <aside className="settings-rail" aria-label="Secciones de configuración">
-          <div className="settings-rail-brand">
-            <div>
-              <strong id="settings-dialog-title">Ajustes</strong>
-              <span>Verbum</span>
+          <aside className="settings-rail" aria-label="Secciones de configuración">
+            <div className="settings-rail-brand">
+              <h2 id="settings-dialog-title" className="settings-rail-title">Ajustes</h2>
+            </div>
+
+            <nav className="settings-nav">
+              {PANELS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`settings-nav-item ${activePanel === id ? 'active' : ''}`}
+                  onClick={() => selectPanel(id)}
+                  aria-current={activePanel === id ? 'page' : undefined}
+                >
+                  <Icon size={16} />
+                  <span>
+                    <strong>{label}</strong>
+                  </span>
+                </button>
+              ))}
+            </nav>
+
+            <span className="settings-rail-version">Verbum 0.1</span>
+          </aside>
+
+          <div className="settings-panel-wrap">
+            <header className="settings-panel-header">
+              <span className="settings-panel-kicker">Preferencias</span>
+              <h1>{heading.title}</h1>
+              <p>{heading.subtitle}</p>
+            </header>
+
+            <div className="settings-panel-content" key={activePanel}>
+              {activePanel === 'appearance' && (
+                <SettingsThemesSection
+                  theme={theme}
+                  themePreference={themePreference}
+                  onSelectTheme={onSelectTheme}
+                  onSelectSystemTheme={onSelectSystemTheme}
+                />
+              )}
+
+              {activePanel === 'reading' && (
+                <>
+                  <SettingsTypographySection
+                    fontSize={fontSize}
+                    onChangeFontSize={onChangeFontSize}
+                    fontFamily={fontFamily}
+                    onChangeFontFamily={onChangeFontFamily}
+                    lineHeightPreset={lineHeightPreset}
+                    onChangeLineHeight={onChangeLineHeight}
+                    maxWidthPreset={maxWidthPreset}
+                    onChangeMaxWidth={onChangeMaxWidth}
+                  />
+                  <SettingsWindowSection
+                    hideTopBar={hideTopBar}
+                    onToggleHideTopBar={onToggleHideTopBar}
+                  />
+                </>
+              )}
+
+              {activePanel === 'voice' && <SettingsVoiceSection />}
+
+              {activePanel === 'ai' && (
+                <SettingsAISection aiConfig={aiConfig} onUpdateAIConfig={onUpdateAIConfig} />
+              )}
+
+              {activePanel === 'library' && (
+                <>
+                  <SettingsVersionsSection
+                    versions={versions}
+                    currentVersion={currentVersion}
+                    onSelectDefaultVersion={onSelectDefaultVersion}
+                  />
+                  <SettingsSearchSection
+                    versions={versions}
+                    searchLanguages={searchLanguages}
+                    onChangeSearchLanguages={onChangeSearchLanguages}
+                  />
+                </>
+              )}
             </div>
           </div>
-
-          <nav className="settings-nav">
-            {PANELS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className={`settings-nav-item ${activePanel === id ? 'active' : ''}`}
-                onClick={() => selectPanel(id)}
-                aria-current={activePanel === id ? 'page' : undefined}
-              >
-                <Icon size={16} />
-                <span>
-                  <strong>{label}</strong>
-                </span>
-              </button>
-            ))}
-          </nav>
-
-          <span className="settings-rail-version">Verbum 0.1</span>
-        </aside>
-
-        <div className="settings-panel-wrap">
-          <header className="settings-panel-header">
-            <span className="settings-panel-kicker">Preferencias</span>
-            <h1>{heading.title}</h1>
-            <p>{heading.subtitle}</p>
-          </header>
-
-          <div className="settings-panel-content" key={activePanel}>
-            {activePanel === 'appearance' && (
-              <SettingsThemesSection
-                theme={theme}
-                themePreference={themePreference}
-                onSelectTheme={onSelectTheme}
-                onSelectSystemTheme={onSelectSystemTheme}
-              />
-            )}
-
-            {activePanel === 'reading' && (
-              <>
-                <SettingsTypographySection
-                  fontSize={fontSize}
-                  onChangeFontSize={onChangeFontSize}
-                  fontFamily={fontFamily}
-                  onChangeFontFamily={onChangeFontFamily}
-                  lineHeightPreset={lineHeightPreset}
-                  onChangeLineHeight={onChangeLineHeight}
-                  maxWidthPreset={maxWidthPreset}
-                  onChangeMaxWidth={onChangeMaxWidth}
-                />
-                <SettingsWindowSection
-                  hideTopBar={hideTopBar}
-                  onToggleHideTopBar={onToggleHideTopBar}
-                />
-              </>
-            )}
-
-            {activePanel === 'voice' && <SettingsVoiceSection />}
-
-            {activePanel === 'ai' && (
-              <SettingsAISection aiConfig={aiConfig} onUpdateAIConfig={onUpdateAIConfig} />
-            )}
-
-            {activePanel === 'library' && (
-              <>
-                <SettingsVersionsSection
-                  versions={versions}
-                  currentVersion={currentVersion}
-                  onSelectDefaultVersion={onSelectDefaultVersion}
-                />
-                <SettingsSearchSection
-                  versions={versions}
-                  searchLanguages={searchLanguages}
-                  onChangeSearchLanguages={onChangeSearchLanguages}
-                />
-              </>
-            )}
-          </div>
-        </div>
         </div>
       </section>
     </div>

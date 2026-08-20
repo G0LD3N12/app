@@ -159,7 +159,7 @@ mod platform {
     use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
     use windows::Win32::Graphics::Dwm::{
         DwmDefWindowProc, DwmIsCompositionEnabled, DwmSetWindowAttribute, DWMSBT_NONE,
-        DWMSBT_MAINWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DWMWA_USE_IMMERSIVE_DARK_MODE,
+        DWMSBT_TABBEDWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DWMWA_USE_IMMERSIVE_DARK_MODE,
         DWMWA_WINDOW_CORNER_PREFERENCE,
     };
     use windows::Win32::Graphics::Gdi::ClientToScreen;
@@ -375,7 +375,7 @@ mod platform {
 
     fn system_backdrop_type(enabled: bool) -> windows::Win32::Graphics::Dwm::DWM_SYSTEMBACKDROP_TYPE {
         if enabled {
-            DWMSBT_MAINWINDOW
+            DWMSBT_TABBEDWINDOW
         } else {
             DWMSBT_NONE
         }
@@ -383,9 +383,8 @@ mod platform {
 
     fn apply_system_backdrop(hwnd: HWND, dark: bool, enabled: bool) -> Result<(), String> {
         let dark_mode = u32::from(dark);
-        // Verbum is a long-lived document window. MAINWINDOW maps to base
-        // Mica on Windows 11, preserving the wallpaper-derived tint without
-        // sampling other windows underneath Verbum.
+        // TABBEDWINDOW maps to Mica Alt on Windows 11 22H2+, providing a
+        // deeper, richer wallpaper-derived color tint across the window shell.
         let backdrop = system_backdrop_type(enabled);
 
         unsafe {
@@ -415,7 +414,7 @@ mod platform {
 
         #[test]
         fn long_lived_window_uses_mica_backdrop() {
-            assert_eq!(system_backdrop_type(true), DWMSBT_MAINWINDOW);
+            assert_eq!(system_backdrop_type(true), DWMSBT_TABBEDWINDOW);
             assert_eq!(system_backdrop_type(false), DWMSBT_NONE);
         }
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 
 export type AppView = 'reader' | 'study' | 'deep-study';
 
@@ -119,23 +119,29 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         })}
       </nav>
 
-      {/* Settings at the bottom */}
-      <div className="sidebar-zen-section">
+      {/* Sidebar Footer: Settings on bottom-left, Plus icon on bottom-right (Arc style, symmetric) */}
+      <div className="sidebar-footer">
         <button
-          className={`sidebar-nav-item ${isSettingsOpen ? 'active' : ''}`}
+          className={`sidebar-footer-btn ${isSettingsOpen ? 'active' : ''}`}
           onClick={onOpenSettings}
-          title={!isExpanded ? 'Configuración' : undefined}
+          title="Ajustes"
         >
           <div className="sidebar-icon-wrapper icon-anim-gear">
             <Settings size={19} />
           </div>
-          {isExpanded && (
-            <div className="sidebar-label-group">
-              <span className="sidebar-item-label">Configuración</span>
-            </div>
-          )}
-          {isExpanded && isSettingsOpen && <ChevronRight size={14} className="active-chevron" />}
         </button>
+
+        {isExpanded && (
+          <button
+            className="sidebar-footer-btn footer-plus-btn"
+            onClick={() => onSelectView('study')}
+            title="Nuevo estudio"
+          >
+            <div className="sidebar-icon-wrapper">
+              <Plus size={19} />
+            </div>
+          </button>
+        )}
       </div>
     </aside>
   );

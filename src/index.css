@@ -841,9 +841,10 @@ input {
   box-shadow: inset 0 1px 0 var(--glass-bar-highlight);
   display: flex;
   flex-direction: column;
-  transition: width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1),
-              transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1),
-              box-shadow 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+  will-change: width, transform;
+  transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 25;
   flex-shrink: 0;
   overflow: hidden;
@@ -873,14 +874,15 @@ input {
   box-shadow: none;
   will-change: transform, box-shadow;
   /* Smooth exit animation when cursor leaves with grace delay */
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.08s,
-              box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.08s,
-              width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: transform 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.08s,
+              box-shadow 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.08s,
+              width 0.38s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Keep inner contents cleanly contained within sidebar bounds */
 .app-sidebar.zen-mode .sidebar-top,
 .app-sidebar.zen-mode .sidebar-nav,
+.app-sidebar.zen-mode .sidebar-footer,
 .app-sidebar.zen-mode .sidebar-zen-section {
   overflow: hidden;
 }
@@ -919,15 +921,14 @@ input {
   height: 56px;
 }
 
-/* Silky smooth entrance on hover or focus */
+/* Silky smooth entrance on hover or focus with physical inertia */
 .app-sidebar.zen-mode:hover,
 .app-sidebar.zen-mode:focus-within {
   transform: translateX(0);
   box-shadow: 12px 0 38px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-medium);
-  /* Instant, fluid entrance with smooth deceleration */
-  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) 0s,
-              box-shadow 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) 0s,
-              width 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              width 0.38s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-sidebar.zen-mode:hover .sidebar-zen-sensor::before,
@@ -940,9 +941,11 @@ input {
 }
 
 .app-sidebar.collapsed .sidebar-top {
-  padding: 8px 0;
+  padding: 4px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  min-height: 48px;
 }
 
 .app-sidebar.collapsed .sidebar-toggle-btn {
@@ -957,11 +960,11 @@ input {
 }
 
 .app-sidebar.collapsed .sidebar-nav {
-  padding: 8px 0;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .app-sidebar.collapsed .sidebar-nav-item {
@@ -975,10 +978,26 @@ input {
   border-radius: 8px;
 }
 
+.app-sidebar.collapsed .sidebar-footer,
 .app-sidebar.collapsed .sidebar-zen-section {
-  padding: 6px 0;
+  padding: 4px;
+  min-height: 48px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  margin-top: auto;
+  border-top: none;
+}
+
+.app-sidebar.collapsed .sidebar-footer-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border-radius: 8px;
 }
 
 .app-sidebar.expanded {
@@ -987,15 +1006,15 @@ input {
 }
 
 .app-sidebar.expanded .sidebar-top {
-  padding: 8px 10px;
+  padding: 4px 8px 4px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   min-height: 48px;
 }
 
-.app-sidebar.expanded .app-brand {
+.app-brand {
   display: inline-flex;
   align-items: center;
   padding: 4px 6px;
@@ -1003,8 +1022,31 @@ input {
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
   user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              max-width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.15s ease,
+              border-color 0.15s ease;
+}
+
+.app-sidebar.expanded .app-brand {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 140px;
+  pointer-events: auto;
+}
+
+.app-sidebar.collapsed .app-brand {
+  opacity: 0;
+  transform: translateX(-14px);
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  pointer-events: none;
 }
 
 .app-sidebar.expanded .app-brand:hover {
@@ -1013,8 +1055,8 @@ input {
 }
 
 .app-sidebar.expanded .sidebar-toggle-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1025,25 +1067,80 @@ input {
 .app-sidebar.expanded .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 8px 4px;
   flex: 1;
 }
 
 .app-sidebar.expanded .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 38px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0;
   border-radius: 8px;
   width: 100%;
   text-align: left;
 }
 
+.sidebar-label-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin-left: 2px;
+  padding-right: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              max-width 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-sidebar.expanded .sidebar-label-group {
+  opacity: 1;
+  transform: translateX(0);
+  max-width: 160px;
+  pointer-events: auto;
+}
+
+.app-sidebar.collapsed .sidebar-label-group {
+  opacity: 0;
+  transform: translateX(-10px);
+  max-width: 0;
+  pointer-events: none;
+}
+
+.active-chevron {
+  color: var(--accent-gold);
+  margin-right: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: opacity 0.24s ease,
+              transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-sidebar.expanded .active-chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.app-sidebar.collapsed .active-chevron {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+.app-sidebar.expanded .sidebar-footer,
 .app-sidebar.expanded .sidebar-zen-section {
-  padding: 6px 10px;
-  border-top: 1px solid var(--border-subtle);
+  padding: 4px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: none;
+  margin-top: auto;
 }
 
 .sidebar-toggle-btn {
@@ -1069,8 +1166,58 @@ input {
   flex: 1;
 }
 
-.sidebar-zen-section {
-  border-top: 1px solid var(--border-subtle);
+.sidebar-footer {
+  border-top: none;
+}
+
+.sidebar-footer-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.footer-plus-btn {
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              max-width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.15s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.app-sidebar.expanded .footer-plus-btn {
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  max-width: 40px;
+  pointer-events: auto;
+}
+
+.app-sidebar.collapsed .footer-plus-btn {
+  opacity: 0;
+  transform: scale(0.8) translateX(8px);
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.sidebar-footer-btn:hover {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+.sidebar-footer-btn.active {
+  background-color: var(--accent-gold-soft);
+  color: var(--accent-gold);
 }
 
 .sidebar-nav-item {
@@ -1094,8 +1241,9 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   flex-shrink: 0;
   transform-origin: center center;
   perspective: 350px;
@@ -1111,30 +1259,26 @@ input {
 
 /* 1. Book / Lectura: Single-Shot 3D Page Turn */
 .sidebar-nav-item:hover .icon-anim-book {
-  transform-origin: 35% 50%;
+  transform-origin: center center;
   animation: sidebarSinglePageTurn 0.68s cubic-bezier(0.22, 1, 0.36, 1) 1 forwards;
   color: var(--accent-gold);
 }
 
 @keyframes sidebarSinglePageTurn {
   0% {
-    transform: perspective(300px) rotateY(0deg) rotateZ(0deg) scale(1);
+    transform: perspective(300px) rotateY(0deg) scale(1);
   }
   25% {
-    /* Right page curls up */
-    transform: perspective(300px) rotateY(-38deg) rotateZ(-3deg) translateY(-1px) scale(1.08);
+    transform: perspective(300px) rotateY(-36deg) rotateZ(-2deg) scale(1.08);
   }
   55% {
-    /* Page sweeps over center spine */
-    transform: perspective(300px) rotateY(-82deg) skewY(-4deg) translateY(-1.4px) scale(1.12);
+    transform: perspective(300px) rotateY(-80deg) scale(1.1);
   }
   80% {
-    /* Lands flat with paper cushion */
-    transform: perspective(300px) rotateY(-12deg) translateY(-0.5px) scale(1.06);
+    transform: perspective(300px) rotateY(-10deg) scale(1.04);
   }
   100% {
-    /* Clean resting open pose */
-    transform: perspective(300px) rotateY(0deg) translateY(-0.8px) scale(1.05);
+    transform: perspective(300px) rotateY(0deg) scale(1.05);
   }
 }
 
@@ -5992,31 +6136,19 @@ select:focus-visible {
 .settings-rail-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 10px 24px;
+  padding: 0 10px 22px;
   color: var(--text-primary);
 }
 
-.settings-rail-brand > div {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
+.settings-rail-title,
 .settings-rail-brand strong {
   font-family: var(--font-title);
-  font-size: 1.16rem;
+  font-size: 1.48rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.settings-rail-brand span {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: left;
 }
 
 .settings-nav {
@@ -7186,6 +7318,7 @@ select:focus-visible {
 [data-platform="windows"] .settings-panel-header h1,
 [data-platform="windows"] .settings-block-toolbar h2,
 [data-platform="windows"] .settings-block-title h2,
+[data-platform="windows"] .settings-rail-title,
 [data-platform="windows"] .settings-rail-brand strong {
   font-family: var(--font-ui-display);
 }
@@ -7217,9 +7350,15 @@ select:focus-visible {
 }
 
 .windows-native-effects .app-header {
-  background-color: color-mix(in srgb, var(--bg-app) 22%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--text-primary) 11%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-app) 10%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 18%, transparent) 38%,
+    color-mix(in srgb, var(--bg-app) 32%, transparent) 72%,
+    color-mix(in srgb, var(--bg-app) 48%, transparent) 100%
+  );
+  border-bottom-color: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -7274,14 +7413,21 @@ select:focus-visible {
 }
 
 .windows-native-effects .app-body-layout {
-  /* One continuous shell material sits behind both the navigation and the
-     rounded canvas cutout. This prevents the exposed arc from becoming a
-     differently tinted anti-aliased wedge. */
-  background-color: color-mix(in srgb, var(--bg-app) 28%, transparent);
+  /* Continuous Mica Alt shell: lets the desktop wallpaper bloom through with deep, rich saturation */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-app) 12%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 18%, transparent) 50%,
+    color-mix(in srgb, var(--bg-app) 26%, transparent) 100%
+  );
 }
 
 .windows-native-effects .app-sidebar {
-  background-color: transparent;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-app) 4%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 14%, transparent) 100%
+  );
   border-right: none;
   box-shadow: none;
   -webkit-backdrop-filter: none;
@@ -7300,6 +7446,7 @@ select:focus-visible {
   background-color: color-mix(in srgb, var(--bg-app) 98%, transparent);
   margin-left: -1px;
   border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
   z-index: 26;
   box-shadow:
     inset 1px 0 0 var(--windows-canvas-inset),
@@ -7308,6 +7455,7 @@ select:focus-visible {
     -8px 4px 20px var(--windows-canvas-relief);
   transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
               border-top-left-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              border-bottom-left-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
               margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -7317,32 +7465,68 @@ select:focus-visible {
 
 .windows-native-effects .app-main-viewport::before {
   border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
   box-shadow: inset 1px 0 0 var(--windows-canvas-inset);
+}
+
+.windows-native-effects .reader-viewport,
+.windows-native-effects .study-catalog-view,
+.windows-native-effects .deep-study-view {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
 }
 
 .windows-native-effects .app-body-layout.zen-mode .app-main-viewport {
   overflow: hidden;
   margin-left: 0;
   border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   z-index: auto;
   box-shadow: none;
 }
 
 .windows-native-effects .app-body-layout.zen-mode .app-main-viewport::before {
   border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   box-shadow: none;
+}
+
+.windows-native-effects .app-body-layout.zen-mode .reader-viewport,
+.windows-native-effects .app-body-layout.zen-mode .study-catalog-view,
+.windows-native-effects .app-body-layout.zen-mode .deep-study-view {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .windows-native-effects[data-theme="white"] .app-header,
 .windows-native-effects[data-theme="light"] .app-header,
 .windows-native-effects[data-theme="sepia"] .app-header {
-  background-color: color-mix(in srgb, var(--bg-app) 36%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-app) 24%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 36%, transparent) 50%,
+    color-mix(in srgb, var(--bg-app) 50%, transparent) 100%
+  );
 }
 
 .windows-native-effects[data-theme="white"] .app-body-layout,
 .windows-native-effects[data-theme="light"] .app-body-layout,
 .windows-native-effects[data-theme="sepia"] .app-body-layout {
-  background-color: color-mix(in srgb, var(--bg-app) 42%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-app) 28%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 38%, transparent) 100%
+  );
+}
+
+.windows-native-effects[data-theme="white"] .app-sidebar,
+.windows-native-effects[data-theme="light"] .app-sidebar,
+.windows-native-effects[data-theme="sepia"] .app-sidebar {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-app) 18%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 32%, transparent) 100%
+  );
 }
 
 .windows-native-effects[data-theme="white"],
@@ -7539,6 +7723,7 @@ select:focus-visible {
 
   .app-sidebar.expanded .sidebar-top,
   .app-sidebar.expanded .sidebar-nav-item,
+  .app-sidebar.expanded .sidebar-footer,
   .app-sidebar.expanded .sidebar-zen-section {
     width: var(--sidebar-collapsed-w);
   }
@@ -7611,6 +7796,7 @@ select:focus-visible {
 
   .app-sidebar.collapsed .sidebar-top,
   .app-sidebar.collapsed .sidebar-nav-item,
+  .app-sidebar.collapsed .sidebar-footer,
   .app-sidebar.collapsed .sidebar-zen-section {
     width: 48px;
   }
@@ -7631,6 +7817,7 @@ select:focus-visible {
 
   .app-sidebar.expanded .sidebar-top,
   .app-sidebar.expanded .sidebar-nav-item,
+  .app-sidebar.expanded .sidebar-footer,
   .app-sidebar.expanded .sidebar-zen-section {
     width: var(--sidebar-expanded-w);
   }
