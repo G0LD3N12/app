@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelTopClose, PanelTopOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { BookOpen, Search, Glasses, Settings, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export type AppView = 'reader' | 'study' | 'deep-study';
 
@@ -25,7 +25,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onOpenSettings,
   onTriggerSearch,
   hideTopBar,
-  onToggleHideTopBar,
   onGoHome,
 }) => {
   const navItems = [
@@ -50,14 +49,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       icon: Glasses,
       iconClass: 'icon-anim-glasses',
       action: () => onSelectView('study'),
-    },
-    {
-      id: 'settings',
-      label: 'Configuración',
-      icon: Settings,
-      iconClass: 'icon-anim-gear',
-      action: onOpenSettings,
-      isAction: true,
     },
   ];
 
@@ -103,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       <nav className="sidebar-nav">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.id === 'settings' ? isSettingsOpen : !item.isAction && activeView === item.id;
+          const isActive = !item.isAction && activeView === item.id;
 
           return (
             <button
@@ -128,21 +119,22 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         })}
       </nav>
 
-      {/* Zen Mode / TopBar Visibility Toggle */}
+      {/* Settings at the bottom */}
       <div className="sidebar-zen-section">
         <button
-          className={`sidebar-nav-item ${hideTopBar ? 'active' : ''}`}
-          onClick={onToggleHideTopBar}
-          title={hideTopBar ? 'Salir del Modo Zen' : 'Modo Zen'}
+          className={`sidebar-nav-item ${isSettingsOpen ? 'active' : ''}`}
+          onClick={onOpenSettings}
+          title={!isExpanded ? 'Configuración' : undefined}
         >
-          <div className="sidebar-icon-wrapper icon-anim-zen">
-            {hideTopBar ? <PanelTopOpen size={18} /> : <PanelTopClose size={18} />}
+          <div className="sidebar-icon-wrapper icon-anim-gear">
+            <Settings size={19} />
           </div>
           {isExpanded && (
             <div className="sidebar-label-group">
-              <span className="sidebar-item-label">Modo Zen</span>
+              <span className="sidebar-item-label">Configuración</span>
             </div>
           )}
+          {isExpanded && isSettingsOpen && <ChevronRight size={14} className="active-chevron" />}
         </button>
       </div>
     </aside>
