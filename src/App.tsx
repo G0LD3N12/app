@@ -119,6 +119,8 @@ export function App() {
   const {
     theme,
     setTheme,
+    themePreference,
+    useSystemTheme,
     fontSize,
     setFontSize,
     fontFamily,
@@ -519,7 +521,9 @@ export function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         theme={theme}
+        themePreference={themePreference}
         onSelectTheme={setTheme}
+        onSelectSystemTheme={useSystemTheme}
         fontSize={fontSize}
         onChangeFontSize={setFontSize}
         fontFamily={fontFamily}

@@ -85,6 +85,10 @@ export type AppTheme =
   | 'dark'
   | 'light';
 
+export type ThemePreference =
+  | { mode: 'system' }
+  | { mode: 'manual'; theme: AppTheme };
+
 export interface ThemeDefinition {
   id: AppTheme;
   name: string;
@@ -105,6 +109,8 @@ export type ScriptureFont =
   | 'sf-pro'
   | 'inter'
   | 'jakarta'
+  | 'cambria'
+  | 'georgia'
   | 'sans';
 
 export interface ScriptureFontOption {
@@ -112,6 +118,7 @@ export interface ScriptureFontOption {
   name: string;
   group: 'suggested' | 'other';
   fontVar: string;
+  platforms?: Array<'windows' | 'macos' | 'linux'>;
 }
 
 export const SCRIPTURE_FONT_OPTIONS: ScriptureFontOption[] = [
@@ -126,6 +133,7 @@ export const SCRIPTURE_FONT_OPTIONS: ScriptureFontOption[] = [
     name: 'San Francisco (SF Pro)',
     group: 'suggested',
     fontVar: 'var(--font-sf-pro)',
+    platforms: ['macos'],
   },
   {
     id: 'garamond',
@@ -150,6 +158,20 @@ export const SCRIPTURE_FONT_OPTIONS: ScriptureFontOption[] = [
     name: 'Source Serif 4',
     group: 'other',
     fontVar: 'var(--font-source-serif)',
+  },
+  {
+    id: 'cambria',
+    name: 'Cambria',
+    group: 'other',
+    fontVar: 'var(--font-cambria)',
+    platforms: ['windows'],
+  },
+  {
+    id: 'georgia',
+    name: 'Georgia',
+    group: 'other',
+    fontVar: 'var(--font-georgia)',
+    platforms: ['windows'],
   },
   {
     id: 'inter',

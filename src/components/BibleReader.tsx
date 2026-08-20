@@ -152,6 +152,8 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
     if (fontFamily === 'sf-pro') return 'var(--font-sf-pro)';
     if (fontFamily === 'inter') return 'var(--font-inter)';
     if (fontFamily === 'jakarta') return 'var(--font-jakarta)';
+    if (fontFamily === 'cambria') return 'var(--font-cambria)';
+    if (fontFamily === 'georgia') return 'var(--font-georgia)';
     if (fontFamily === 'sans') return 'var(--font-sans)';
     return 'var(--font-serif)'; // literata default
   };
@@ -279,7 +281,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                     onClick={() => onSelectVerse(v.verse)}
                   >
                     {/* Primary Column */}
-                    <div className="parallel-col primary">
+                    <div className="parallel-col primary" data-version-label={versionShortName}>
                       <VerseItem
                         verse={v}
                         fontSize={fontSize - 1}
@@ -294,7 +296,10 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                     </div>
 
                     {/* Secondary Parallel Column */}
-                    <div className="parallel-col secondary">
+                    <div
+                      className="parallel-col secondary"
+                      data-version-label={secondaryVersionShortName || 'Traducción 2'}
+                    >
                       {pVerse ? (
                         <div
                           className="verse-row-editorial secondary"

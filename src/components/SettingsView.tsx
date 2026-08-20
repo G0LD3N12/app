@@ -6,6 +6,7 @@ import {
   ScriptureFont,
   LineHeightPreset,
   MaxWidthPreset,
+  ThemePreference,
 } from '../types';
 import { SettingsWindowSection } from './settings/SettingsWindowSection';
 import { SettingsAISection } from './settings/SettingsAISection';
@@ -20,7 +21,9 @@ interface SettingsViewProps {
   isOpen: boolean;
   onClose: () => void;
   theme: AppTheme;
+  themePreference: ThemePreference;
   onSelectTheme: (theme: AppTheme) => void;
+  onSelectSystemTheme: () => void;
   fontSize: number;
   onChangeFontSize: (size: number) => void;
   fontFamily: ScriptureFont;
@@ -62,7 +65,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isOpen,
   onClose,
   theme,
+  themePreference,
   onSelectTheme,
+  onSelectSystemTheme,
   fontSize,
   onChangeFontSize,
   fontFamily,
@@ -206,7 +211,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div className="settings-panel-content" key={activePanel}>
             {activePanel === 'appearance' && (
-              <SettingsThemesSection theme={theme} onSelectTheme={onSelectTheme} />
+              <SettingsThemesSection
+                theme={theme}
+                themePreference={themePreference}
+                onSelectTheme={onSelectTheme}
+                onSelectSystemTheme={onSelectSystemTheme}
+              />
             )}
 
             {activePanel === 'reading' && (

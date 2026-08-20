@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Verbum",
+        "width": 1280,
+        "height": 850,
+        "minWidth": 500,
+        "minHeight": 640,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true
+      }
+    ]
+  }
+}

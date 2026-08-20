@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
-import { AppTheme, ThemeDefinition } from '../../types';
+import { Check, MonitorCog } from 'lucide-react';
+import { AppTheme, ThemeDefinition, ThemePreference } from '../../types';
 import { THEME_PALETTES } from '../../themeDefinitions';
 
 const THEME_LABELS: Partial<Record<AppTheme, string>> = {
@@ -54,12 +54,16 @@ const ThemeCard = React.memo<{
 
 interface SettingsThemesSectionProps {
   theme: AppTheme;
+  themePreference: ThemePreference;
   onSelectTheme: (theme: AppTheme) => void;
+  onSelectSystemTheme: () => void;
 }
 
 export const SettingsThemesSection: React.FC<SettingsThemesSectionProps> = ({
   theme,
+  themePreference,
   onSelectTheme,
+  onSelectSystemTheme,
 }) => {
   const [filter, setFilter] = useState<'all' | 'dark' | 'light'>('all');
   const activeTheme = theme === 'dark' ? 'black' : theme === 'light' ? 'white' : theme;
@@ -94,6 +98,30 @@ export const SettingsThemesSection: React.FC<SettingsThemesSectionProps> = ({
       </div>
 
       <div className="settings-theme-grid">
+        {filter === 'all' && (
+          <button
+            type="button"
+            className={`settings-theme-card settings-system-theme-card ${themePreference.mode === 'system' ? 'active' : ''}`}
+            onClick={onSelectSystemTheme}
+            aria-pressed={themePreference.mode === 'system'}
+            title="Seguir el modo claro u oscuro de Windows"
+            style={{
+              '--theme-bg': theme === 'white' ? '#f9f9f9' : '#0c1017',
+              '--theme-surface': theme === 'white' ? '#ffffff' : '#151b23',
+              '--theme-accent': theme === 'white' ? '#000000' : '#e5b842',
+              '--theme-text': theme === 'white' ? '#0a0a0a' : '#f0f6fc',
+            } as React.CSSProperties}
+          >
+            <span className="settings-theme-miniature settings-system-theme-miniature" aria-hidden="true">
+              <MonitorCog size={20} />
+            </span>
+            <span className="settings-theme-card-meta">
+              <strong>Sistema</strong>
+              <span className="settings-theme-system-caption">Windows claro/oscuro</span>
+            </span>
+            {themePreference.mode === 'system' && <Check className="settings-theme-check" size={14} />}
+          </button>
+        )}
         {themes.map((palette) => (
           <ThemeCard
             key={palette.id}

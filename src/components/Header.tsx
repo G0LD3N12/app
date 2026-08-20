@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Book, BibleVersion, ScriptureFont, LineHeightPreset, MaxWidthPreset, AppTheme } from '../types';
 import { VersionPickerPopover } from './VersionPickerPopover';
 import { ReaderPreferencesPopover } from './ReaderPreferencesPopover';
-import { Search, BookOpen, ChevronDown, Columns2, Sliders, Minus, Square, X } from 'lucide-react';
+import { Search, BookOpen, ChevronDown, Columns2, Sliders, Minus, Square, X, MoreHorizontal } from 'lucide-react';
 import { minimizeWindow, toggleMaximizeWindow, closeWindow } from '../services/bibleService';
+import { showWindowsSystemMenu, startWindowsDrag } from '../services/windowsService';
+import { isWindowsPlatform } from '../utils/platform';
+import { useWindowsCaptionState } from '../hooks/useWindowsCaptionState';
 
 interface HeaderProps {
   currentBook: Book | null;
@@ -63,6 +66,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [internalTarget, setInternalTarget] = useState<'primary' | 'secondary'>('primary');
   const [isPrefPopoverOpen, setIsPrefPopoverOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
+  const isWindows = isWindowsPlatform();
+  const captionState = useWindowsCaptionState();
 
   const isPopoverOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
   const popoverTarget = controlledTarget !== undefined ? controlledTarget : internalTarget;
@@ -89,17 +95,28 @@ export const Header: React.FC<HeaderProps> = React.memo(({
 
   return (
     <header
-      className="app-header"
+      className={`app-header ${captionState.focused ? '' : 'window-inactive'}`}
       data-tauri-drag-region
+      onMouseDown={(event) => {
+        if (!isWindows || event.button !== 0 || event.detail !== 1) return;
+        if ((event.target as HTMLElement).closest('button, input, a, [role="button"]')) return;
+        void startWindowsDrag();
+      }}
       onDoubleClick={(e) => {
-        // Double click empty titlebar area to toggle maximize window
-        if ((e.target as HTMLElement).classList.contains('app-header')) {
+        if (!(e.target as HTMLElement).closest('button, input, a, [role="button"]')) {
           toggleMaximizeWindow();
+        }
+      }}
+      onContextMenu={(event) => {
+        if ((event.target as HTMLElement).closest('button, input, a, [role="button"]')) return;
+        if (isWindows) {
+          event.preventDefault();
+          void showWindowsSystemMenu(event.screenX, event.screenY);
         }
       }}
     >
       {/* Left Segment: Passage Selector Pill */}
-      <div className="header-left no-drag">
+      <div className="header-left" data-tauri-drag-region>
         <button className="nav-picker-btn" onClick={onOpenBookPicker} title="Cambiar libro o capítulo">
           <BookOpen size={14} />
           <span>
@@ -110,7 +127,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       </div>
 
       {/* Center Segment: Command Palette Pill (Raycast / Linear / Arc style) */}
-      <div className="header-center no-drag" data-tauri-drag-region>
+      <div className="header-center" data-tauri-drag-region>
         <button
           className="search-trigger-btn"
           onClick={() => onOpenCommandPalette()}
@@ -123,9 +140,9 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       </div>
 
       {/* Right Segment: Translation Selector, Parallel, Prefs, Window Controls */}
-      <div className="header-right no-drag">
+      <div className="header-right" data-tauri-drag-region>
         {/* Rich Version Selector Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="header-version-control" style={{ position: 'relative' }}>
           {!parallelMode ? (
             <button
               className="version-dropdown-btn"
@@ -190,7 +207,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
 
         {/* Parallel Mode Quick Toggle */}
         <button
-          className={`icon-btn ${parallelMode ? 'active-icon-btn' : ''}`}
+          className={`icon-btn header-parallel-control ${parallelMode ? 'active-icon-btn' : ''}`}
           onClick={onToggleParallelMode}
           title={parallelMode ? 'Desactivar vista paralela (Atajo: P)' : 'Activar vista paralela lado a lado (Atajo: P)'}
         >
@@ -198,7 +215,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         </button>
 
         {/* Typography & Reading Preferences Popover Trigger */}
-        <div style={{ position: 'relative' }}>
+        <div className="header-reading-control" style={{ position: 'relative' }}>
           <button
             className="icon-btn"
             onClick={() => setIsPrefPopoverOpen((prev) => !prev)}
@@ -223,16 +240,77 @@ export const Header: React.FC<HeaderProps> = React.memo(({
           />
         </div>
 
+        <div className="header-overflow-control">
+          <button
+            className={`icon-btn ${isOverflowOpen ? 'active-icon-btn' : ''}`}
+            onClick={() => setIsOverflowOpen((current) => !current)}
+            title="Más comandos"
+            aria-label="Más comandos de la barra superior"
+            aria-expanded={isOverflowOpen}
+          >
+            <MoreHorizontal size={16} />
+          </button>
+          {isOverflowOpen && (
+            <>
+              <div className="popover-backdrop" onClick={() => setIsOverflowOpen(false)} />
+              <div className="header-overflow-menu">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOverflowOpen(false);
+                    handleOpenPopover('primary');
+                  }}
+                >
+                  <BookOpen size={15} />
+                  <span>Traducciones</span>
+                  <small>{currentVerObj?.short_name || 'RV1909'}</small>
+                </button>
+                <button
+                  type="button"
+                  className={parallelMode ? 'active' : ''}
+                  onClick={() => {
+                    setIsOverflowOpen(false);
+                    onToggleParallelMode();
+                  }}
+                >
+                  <Columns2 size={15} />
+                  <span>Vista paralela</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOverflowOpen(false);
+                    setIsPrefPopoverOpen(true);
+                  }}
+                >
+                  <Sliders size={15} />
+                  <span>Lectura y tipografía</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Integrated Window Controls (Native Titlebar Pill) */}
-        <div className="win-controls-group">
-          <button className="win-btn" onClick={minimizeWindow} title="Minimizar ventana">
-            <Minus size={12} />
+        <div className="win-controls-group" aria-label="Controles de ventana">
+          <button className="win-btn" onClick={minimizeWindow} title="Minimizar" aria-label="Minimizar ventana">
+            {isWindows ? <span className="windows-caption-glyph">&#xE921;</span> : <Minus size={12} />}
           </button>
-          <button className="win-btn" onClick={toggleMaximizeWindow} title="Maximizar / Restaurar ventana">
-            <Square size={10} />
+          <button
+            className={`win-btn maximize-btn ${captionState.hovered === 'maximize' ? 'native-hover' : ''}`}
+            onClick={toggleMaximizeWindow}
+            aria-label={captionState.maximized ? 'Restaurar ventana' : 'Maximizar ventana'}
+          >
+            {isWindows ? (
+              <span className="windows-caption-glyph">
+                {captionState.maximized ? '\uE923' : '\uE922'}
+              </span>
+            ) : (
+              <Square size={10} />
+            )}
           </button>
-          <button className="win-btn close-btn" onClick={closeWindow} title="Cerrar aplicación">
-            <X size={12} />
+          <button className="win-btn close-btn" onClick={closeWindow} title="Cerrar" aria-label="Cerrar aplicación">
+            {isWindows ? <span className="windows-caption-glyph">&#xE8BB;</span> : <X size={12} />}
           </button>
         </div>
       </div>

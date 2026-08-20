@@ -304,9 +304,18 @@
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-jakarta: 'Plus Jakarta Sans', sans-serif;
   --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: var(--font-sans);
+  --font-ui-display: var(--font-sans);
   --font-title-luxury: 'Cinzel Decorative', 'Cinzel', serif;
   --font-title: 'Cinzel', serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-reference: var(--font-mono);
+  --font-cambria: Cambria, Georgia, serif;
+  --font-georgia: Georgia, 'Times New Roman', serif;
+
+  --material-shell-bg: var(--glass-bar-bg);
+  --material-transient-bg: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  --material-transient-border: color-mix(in srgb, var(--text-primary) 15%, transparent);
   
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
@@ -333,7 +342,7 @@
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-ui);
   background-color: var(--bg-app);
   color: var(--text-primary);
   line-height: 1.5;
@@ -393,7 +402,6 @@ input {
   background-color: var(--bg-app);
   overflow: hidden;
   position: relative;
-  transform: translateZ(0);
 }
 
 /* Atmosphere: static film grain (subtle texture without glowing blobs).
@@ -471,14 +479,12 @@ input {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  -webkit-app-region: no-drag;
 }
 
 .header-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: no-drag;
 }
 
 .header-right {
@@ -486,7 +492,6 @@ input {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  -webkit-app-region: no-drag;
 }
 
 .header-subtle-divider {
@@ -1305,7 +1310,7 @@ input {
   display: flex;
   flex-direction: column;
   position: relative;
-  transform: translateZ(0);
+  background-color: var(--bg-app);
 }
 
 .app-main-viewport::before {
@@ -1331,7 +1336,6 @@ input {
   align-items: center;
   padding: 24px 28px 80px 28px;
   scroll-behavior: smooth;
-  transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1639,10 +1643,10 @@ input {
 .command-palette-card {
   width: min(680px, 92vw);
   max-height: 75vh;
-  background-color: var(--glass-bar-bg);
+  background-color: var(--material-transient-bg, var(--glass-bar-bg));
   border: 1px solid var(--glass-bar-border);
   border-radius: 12px;
-  box-shadow: var(--shadow-lg), inset 0 1px 0 var(--glass-bar-highlight);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 1px 0 var(--glass-bar-highlight);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1651,8 +1655,8 @@ input {
 
 @supports (backdrop-filter: blur(1px)) {
   .command-palette-card {
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(145%);
+    backdrop-filter: blur(24px) saturate(145%);
   }
 }
 
@@ -5871,6 +5875,14 @@ select:focus-visible {
     backdrop-filter: none !important;
     background-color: var(--bg-surface) !important;
   }
+
+  .windows-native-effects .nav-picker-btn,
+  .windows-native-effects .search-trigger-btn,
+  .windows-native-effects .version-dropdown-btn,
+  .windows-native-effects .version-dropdown-split-btn,
+  .windows-native-effects .kbd-shortcut {
+    background-color: var(--bg-surface-elevated) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7157,5 +7169,512 @@ select:focus-visible {
     width: 100%;
     padding-left: 46px;
     justify-content: space-between;
+  }
+}
+
+/* =========================================================================
+   WINDOWS 11 NATIVE SHELL, CAPTION CONTROLS & SNAP-RESPONSIVE LAYOUT
+   ========================================================================= */
+
+[data-platform="windows"] {
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-ui-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+  --font-reference: var(--font-mono);
+}
+
+[data-platform="windows"] .settings-panel-header h1,
+[data-platform="windows"] .settings-block-toolbar h2,
+[data-platform="windows"] .settings-block-title h2,
+[data-platform="windows"] .settings-rail-brand strong {
+  font-family: var(--font-ui-display);
+}
+
+.windows-native-effects,
+.windows-native-effects body,
+.windows-native-effects #root,
+.windows-native-effects .app-container {
+  background: transparent;
+}
+
+.windows-native-effects {
+  /* Header controls are a restrained tonal wash over the native Mica.
+     Using the foreground color keeps even the pure-black theme from
+     producing opaque black capsules. */
+  --windows-chrome-control-bg: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  --windows-chrome-control-hover: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  --windows-chrome-control-pressed: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --windows-chrome-control-border: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --windows-chrome-control-highlight: color-mix(in srgb, white 6%, transparent);
+  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.windows-native-effects .app-atmosphere {
+  display: none;
+}
+
+.windows-native-effects .app-header {
+  background-color: color-mix(in srgb, var(--bg-app) 22%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.windows-native-effects .nav-picker-btn,
+.windows-native-effects .search-trigger-btn,
+.windows-native-effects .version-dropdown-btn,
+.windows-native-effects .version-dropdown-split-btn {
+  background-color: var(--windows-chrome-control-bg);
+  border-color: var(--windows-chrome-control-border);
+  box-shadow: inset 0 1px 0 var(--windows-chrome-control-highlight);
+}
+
+.windows-native-effects .nav-picker-btn:hover,
+.windows-native-effects .search-trigger-btn:hover,
+.windows-native-effects .version-dropdown-btn:hover,
+.windows-native-effects .version-dropdown-split-btn:hover {
+  background-color: var(--windows-chrome-control-hover);
+  border-color: color-mix(in srgb, var(--text-primary) 16%, transparent);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 var(--windows-chrome-control-highlight);
+}
+
+.windows-native-effects .nav-picker-btn:active,
+.windows-native-effects .search-trigger-btn:active,
+.windows-native-effects .version-dropdown-btn:active,
+.windows-native-effects .version-dropdown-split-btn:active {
+  background-color: var(--windows-chrome-control-pressed);
+}
+
+.windows-native-effects .search-pill-icon {
+  color: var(--text-secondary);
+}
+
+.windows-native-effects .search-trigger-btn:hover .search-pill-icon,
+.windows-native-effects .version-primary-tag {
+  color: var(--text-primary);
+}
+
+.windows-native-effects .kbd-shortcut {
+  background-color: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  border-color: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  box-shadow: none;
+}
+
+.windows-native-effects .app-header .icon-btn:not(.win-btn):hover {
+  background-color: var(--windows-chrome-control-hover);
+}
+
+.windows-native-effects .version-split-side:hover {
+  background-color: var(--windows-chrome-control-hover);
+}
+
+.windows-native-effects .app-body-layout {
+  /* One continuous shell material sits behind both the navigation and the
+     rounded canvas cutout. This prevents the exposed arc from becoming a
+     differently tinted anti-aliased wedge. */
+  background-color: color-mix(in srgb, var(--bg-app) 28%, transparent);
+}
+
+.windows-native-effects .app-sidebar {
+  background-color: transparent;
+  border-right: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.windows-native-effects .app-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  z-index: 3;
+  pointer-events: none;
+  background-color: var(--windows-canvas-seam);
+}
+
+.windows-native-effects .app-main-viewport {
+  background-color: color-mix(in srgb, var(--bg-app) 98%, transparent);
+  margin-left: -1px;
+  border-top-left-radius: 12px;
+}
+
+.windows-native-effects .app-body-layout.zen-mode .app-main-viewport {
+  margin-left: 0;
+  border-top-left-radius: 0;
+}
+
+.windows-native-effects[data-theme="white"] .app-header,
+.windows-native-effects[data-theme="light"] .app-header,
+.windows-native-effects[data-theme="sepia"] .app-header {
+  background-color: color-mix(in srgb, var(--bg-app) 36%, transparent);
+}
+
+.windows-native-effects[data-theme="white"] .app-body-layout,
+.windows-native-effects[data-theme="light"] .app-body-layout,
+.windows-native-effects[data-theme="sepia"] .app-body-layout {
+  background-color: color-mix(in srgb, var(--bg-app) 42%, transparent);
+}
+
+.reader-pref-popover,
+.version-picker-popover,
+.floating-zen-bar,
+.audio-player-bar-compact,
+.app-toast {
+  background-color: var(--material-transient-bg, var(--bg-surface));
+  border-color: var(--material-transient-border, var(--border-medium));
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .reader-pref-popover,
+  .version-picker-popover,
+  .floating-zen-bar,
+  .audio-player-bar-compact,
+  .app-toast {
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    backdrop-filter: blur(18px) saturate(135%);
+  }
+}
+
+.command-palette-card {
+  border-color: var(--material-transient-border, var(--glass-bar-border));
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitchTiles'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.16' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(var(--material-transient-bg), var(--material-transient-bg));
+  background-size: 160px 160px, auto;
+  background-blend-mode: soft-light, normal;
+}
+
+[data-platform="windows"] .app-header {
+  padding-right: 0;
+}
+
+[data-platform="windows"] .header-right {
+  align-self: stretch;
+}
+
+[data-platform="windows"] .win-controls-group {
+  align-self: stretch;
+  height: 48px;
+  margin-left: 2px;
+  padding-left: 0;
+  gap: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+[data-platform="windows"] .win-btn {
+  width: 46px;
+  height: 48px;
+  border-radius: 0;
+  transition: background-color 90ms ease, color 90ms ease;
+}
+
+[data-platform="windows"] .windows-caption-glyph {
+  display: inline-grid;
+  place-items: center;
+  font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+[data-platform="windows"] .win-btn:hover,
+[data-platform="windows"] .win-btn.native-hover {
+  background-color: color-mix(in srgb, var(--text-primary) 11%, transparent);
+}
+
+[data-platform="windows"] .win-btn.close-btn:hover {
+  background-color: #c42b1c;
+  color: #ffffff;
+}
+
+[data-platform="windows"] .app-header.window-inactive .win-btn,
+[data-platform="windows"] .app-header.window-inactive .nav-picker-btn,
+[data-platform="windows"] .app-header.window-inactive .search-trigger-btn {
+  opacity: 0.68;
+}
+
+.header-overflow-control {
+  position: relative;
+  display: none;
+}
+
+.header-overflow-menu {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 80;
+  width: 226px;
+  padding: 6px;
+  border: 1px solid var(--material-transient-border, var(--border-medium));
+  border-radius: 10px;
+  background: var(--material-transient-bg, var(--bg-surface));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34), inset 0 1px 0 var(--glass-bar-highlight);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+.header-overflow-menu button {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+.header-overflow-menu button:hover,
+.header-overflow-menu button.active {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+.header-overflow-menu button.active svg {
+  color: var(--accent-gold);
+}
+
+.header-overflow-menu small {
+  color: var(--text-muted);
+  font-family: var(--font-reference);
+  font-size: 0.65rem;
+}
+
+.settings-system-theme-miniature {
+  display: grid;
+  place-items: center;
+  color: var(--theme-accent);
+  background:
+    linear-gradient(135deg, var(--theme-surface) 0 49%, var(--theme-bg) 50% 100%);
+}
+
+.settings-theme-system-caption {
+  color: var(--text-muted);
+  font-size: 0.63rem;
+  white-space: nowrap;
+}
+
+.settings-system-theme-card .settings-theme-card-meta {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.settings-native-status-row {
+  align-items: center;
+}
+
+.settings-native-status {
+  padding: 3px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--bg-surface-elevated);
+  font-family: var(--font-reference);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 1100px) {
+  .search-trigger-btn {
+    min-width: 220px;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 959px) {
+  .app-sidebar,
+  .app-sidebar.expanded,
+  .app-sidebar.collapsed {
+    width: var(--sidebar-collapsed-w);
+  }
+
+  .app-sidebar.expanded .app-brand,
+  .app-sidebar.expanded .sidebar-label-group,
+  .app-sidebar.expanded .active-chevron {
+    display: none;
+  }
+
+  .app-sidebar.expanded .sidebar-top,
+  .app-sidebar.expanded .sidebar-nav-item,
+  .app-sidebar.expanded .sidebar-zen-section {
+    width: var(--sidebar-collapsed-w);
+  }
+
+  .search-trigger-btn {
+    min-width: 180px;
+    max-width: 230px;
+  }
+
+  .kbd-shortcut {
+    display: none;
+  }
+}
+
+@media (max-width: 719px) {
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px;
+    padding-left: 8px;
+  }
+
+  .header-left {
+    min-width: 0;
+  }
+
+  .nav-picker-btn {
+    max-width: 150px;
+    padding: 0 8px;
+  }
+
+  .nav-picker-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search-trigger-btn {
+    min-width: 32px;
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+    box-shadow: none;
+  }
+
+  .search-pill-text,
+  .header-version-control > .version-dropdown-btn,
+  .header-version-control > .version-dropdown-split-btn,
+  .header-parallel-control,
+  .header-reading-control > .icon-btn {
+    display: none;
+  }
+
+  .header-overflow-control {
+    display: block;
+  }
+
+  .header-version-control .version-picker-popover,
+  .header-reading-control .reader-pref-popover {
+    position: fixed;
+    top: 52px;
+    right: 8px;
+    left: auto;
+    width: min(348px, calc(100vw - 16px));
+    max-height: calc(100vh - 60px);
+  }
+
+  .app-sidebar.collapsed {
+    width: 48px;
+  }
+
+  .app-sidebar.collapsed .sidebar-top,
+  .app-sidebar.collapsed .sidebar-nav-item,
+  .app-sidebar.collapsed .sidebar-zen-section {
+    width: 48px;
+  }
+
+  .app-sidebar.expanded {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 54;
+    width: var(--sidebar-expanded-w);
+    box-shadow: 20px 0 48px rgba(0, 0, 0, 0.34);
+  }
+
+  .app-sidebar.expanded .app-brand,
+  .app-sidebar.expanded .sidebar-label-group,
+  .app-sidebar.expanded .active-chevron {
+    display: flex;
+  }
+
+  .app-sidebar.expanded .sidebar-top,
+  .app-sidebar.expanded .sidebar-nav-item,
+  .app-sidebar.expanded .sidebar-zen-section {
+    width: var(--sidebar-expanded-w);
+  }
+
+  .reader-viewport {
+    padding: 20px 16px 72px;
+  }
+
+  .chapter-document-title {
+    font-size: 1.55rem;
+  }
+
+  .chapter-document-meta {
+    flex-wrap: wrap;
+  }
+
+  .parallel-column-header {
+    display: none;
+  }
+
+  .parallel-verse-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 10px 8px 16px;
+  }
+
+  .parallel-col::before {
+    content: attr(data-version-label);
+    display: block;
+    margin: 0 0 3px 6px;
+    color: var(--text-muted);
+    font-family: var(--font-reference);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .parallel-col.secondary {
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .command-palette-backdrop {
+    padding: 52px 16px 16px;
+  }
+
+  .command-palette-card {
+    width: 100%;
+    max-height: calc(100vh - 68px);
+  }
+
+  .reader-nav-footer .nav-chapter-btn span {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .app-header,
+  .app-sidebar,
+  .command-palette-card,
+  .reader-pref-popover,
+  .version-picker-popover,
+  .header-overflow-menu,
+  .nav-picker-btn,
+  .search-trigger-btn,
+  .version-dropdown-btn,
+  .version-dropdown-split-btn,
+  .kbd-shortcut {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .win-btn.close-btn:hover {
+    background: Highlight;
+    color: HighlightText;
   }
 }

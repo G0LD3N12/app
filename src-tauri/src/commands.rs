@@ -115,11 +115,6 @@ pub fn close_window(window: tauri::Window) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn set_window_decorations(window: tauri::Window, decorations: bool) -> Result<(), String> {
-    window.set_decorations(decorations).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub async fn check_voicebox_status(
     state: State<'_, AppState>,
     url: Option<String>,

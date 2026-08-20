@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ScriptureFont, SCRIPTURE_FONT_OPTIONS, ScriptureFontOption } from '../types';
 import { ChevronDown, Check } from 'lucide-react';
+import { getDesktopPlatform } from '../utils/platform';
 
 interface FontPickerProps {
   fontFamily: ScriptureFont;
@@ -21,8 +22,12 @@ export const FontPicker: React.FC<FontPickerProps> = ({
   const selectedOption =
     SCRIPTURE_FONT_OPTIONS.find((opt) => opt.id === fontFamily) || SCRIPTURE_FONT_OPTIONS[0];
 
-  const suggestedOptions = SCRIPTURE_FONT_OPTIONS.filter((opt) => opt.group === 'suggested');
-  const otherOptions = SCRIPTURE_FONT_OPTIONS.filter((opt) => opt.group === 'other');
+  const platform = getDesktopPlatform();
+  const availableOptions = SCRIPTURE_FONT_OPTIONS.filter(
+    (option) => !option.platforms || option.platforms.includes(platform as 'windows' | 'macos' | 'linux')
+  );
+  const suggestedOptions = availableOptions.filter((opt) => opt.group === 'suggested');
+  const otherOptions = availableOptions.filter((opt) => opt.group === 'other');
 
   // Click outside to close
   useEffect(() => {

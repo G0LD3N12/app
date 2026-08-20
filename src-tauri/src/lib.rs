@@ -2,6 +2,7 @@ pub mod ai;
 pub mod commands;
 pub mod db;
 pub mod tts;
+pub mod windows_native;
 
 use db::DatabaseManager;
 use std::path::PathBuf;
@@ -64,6 +65,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                windows_native::initialize(&window, app.handle().clone())
+                    .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
+            }
+
             let res_dir = resolve_resource_dir(app.handle());
             let db_mgr = DatabaseManager::new(res_dir)
                 .expect("Failed to initialize SQLite DatabaseManager");
@@ -88,7 +94,10 @@ pub fn run() {
             commands::minimize_window,
             commands::toggle_maximize_window,
             commands::close_window,
-            commands::set_window_decorations,
+            windows_native::get_windows_capabilities,
+            windows_native::set_windows_appearance,
+            windows_native::show_windows_system_menu,
+            windows_native::start_windows_drag,
             commands::check_voicebox_status,
             commands::get_voicebox_profiles,
             commands::synthesize_speech,

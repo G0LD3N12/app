@@ -438,9 +438,3 @@ export async function closeWindow(): Promise<void> {
     await invoke('close_window');
   }
 }
-
-export async function setWindowDecorations(decorations: boolean): Promise<void> {
-  if (isTauriEnv()) {
-    await invoke('set_window_decorations', { decorations });
-  }
-}

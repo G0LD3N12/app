@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { setWindowDecorations } from '../../services/bibleService';
+import React from 'react';
+import { isWindowsPlatform } from '../../utils/platform';
 
 interface SettingsWindowSectionProps {
   hideTopBar: boolean;
@@ -10,20 +10,7 @@ export const SettingsWindowSection: React.FC<SettingsWindowSectionProps> = ({
   hideTopBar,
   onToggleHideTopBar,
 }) => {
-  const [nativeDecorations, setNativeDecorations] = useState(
-    () => localStorage.getItem('verbum_native_decorations') === 'true'
-  );
-
-  const toggleDecorations = async () => {
-    const next = !nativeDecorations;
-    setNativeDecorations(next);
-    localStorage.setItem('verbum_native_decorations', String(next));
-    try {
-      await setWindowDecorations(next);
-    } catch (error) {
-      console.error('Failed to toggle window decorations:', error);
-    }
-  };
+  const isWindows = isWindowsPlatform();
 
   return (
     <section className="settings-block">
@@ -46,20 +33,15 @@ export const SettingsWindowSection: React.FC<SettingsWindowSectionProps> = ({
           </button>
         </div>
 
-        <div className="settings-compact-row">
-          <div>
-            <strong>Marco del sistema</strong>
-            <span>Usa los controles nativos de la ventana.</span>
+        {isWindows && (
+          <div className="settings-compact-row settings-native-status-row">
+            <div>
+              <strong>Integración con Windows</strong>
+              <span>Mica, Snap Layouts y el marco DWM siguen las preferencias del sistema.</span>
+            </div>
+            <span className="settings-native-status">DWM</span>
           </div>
-          <button
-            type="button"
-            className={`verbum-switch ${nativeDecorations ? 'active' : ''}`}
-            onClick={toggleDecorations}
-            aria-label="Alternar marco del sistema"
-          >
-            <i className="verbum-switch-knob" />
-          </button>
-        </div>
+        )}
       </div>
     </section>
   );
