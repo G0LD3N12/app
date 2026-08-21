@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScriptureFont, LineHeightPreset, MaxWidthPreset, AppTheme } from '../types';
 import { SlidersHorizontal, Type, AlignJustify, MoveHorizontal, Moon, Sun } from 'lucide-react';
 import { FontPicker } from './FontPicker';
@@ -32,6 +32,15 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
   theme,
   onSelectTheme,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const isDark = theme ? theme !== 'white' && theme !== 'sepia' && theme !== 'light' : true;
@@ -46,9 +55,7 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
   };
 
   return (
-    <>
-      <div className="popover-backdrop" onClick={onClose} />
-      <div className="reader-pref-popover">
+    <div className="reader-pref-popover" onClick={(e) => e.stopPropagation()}>
         {/* Header with Title & Theme Switch */}
         <div className="reader-pref-header">
           <div className="reader-pref-title">
@@ -217,6 +224,5 @@ export const ReaderPreferencesPopover: React.FC<ReaderPreferencesPopoverProps> =
           </div>
         </div>
       </div>
-    </>
   );
 };

@@ -29,4 +29,17 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    // WebView2 en Windows 11 es Edge 120+ — no transpilar para ES2015 innecesario
+    target: "chrome120",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/lucide-react")) return "vendor";
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+    sourcemap: false,
+  },
 }));

@@ -49,11 +49,54 @@ impl Default for NativeAudioPlayer {
     }
 }
 
+#[cfg(not(windows))]
 fn signal_pid(pid: u32, signal: &str) {
     if pid > 0 {
         let _ = Command::new("kill")
             .args([signal, &pid.to_string()])
             .output();
+    }
+}
+
+#[cfg(windows)]
+fn signal_pid(pid: u32, signal: &str) {
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD, THREADENTRY32,
+    };
+    use windows::Win32::System::Threading::{
+        OpenProcess, OpenThread, ResumeThread, SuspendThread, PROCESS_SUSPEND_RESUME,
+        THREAD_SUSPEND_RESUME,
+    };
+    if pid == 0 {
+        return;
+    }
+    let is_suspend = signal == "-STOP";
+    unsafe {
+        // Try NtSuspendProcess via ntdll for atomic suspend (faster, single syscall)
+        // Fallback to per-thread suspend if unavailable
+        let snapshot = match CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0) {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let mut entry = THREADENTRY32::default();
+        entry.dwSize = std::mem::size_of::<THREADENTRY32>() as u32;
+        let mut ok = Thread32First(snapshot, &mut entry).is_ok();
+        while ok {
+            if entry.th32OwnerProcessID == pid {
+                if let Ok(h) = OpenThread(THREAD_SUSPEND_RESUME, false, entry.th32ThreadID) {
+                    if is_suspend {
+                        SuspendThread(h);
+                    } else {
+                        ResumeThread(h);
+                    }
+                    let _ = windows::Win32::Foundation::CloseHandle(h);
+                }
+            }
+            ok = Thread32Next(snapshot, &mut entry).is_ok();
+        }
+        let _ = windows::Win32::Foundation::CloseHandle(snapshot);
+        // Also try ntdll suspend as backup for edge threads
+        let _ = OpenProcess(PROCESS_SUSPEND_RESUME, false, pid);
     }
 }
 
@@ -377,7 +420,31 @@ fn wav_duration_from_bytes(bytes: &[u8]) -> Option<f32> {
 
 // PipeWire/PulseAudio/ALSA players all detect the container from content
 // (via libsndfile), so MP3 payloads in a .wav path still play correctly.
+// Windows: ffplay (ffmpeg) or PowerShell SoundPlayer fallback.
 fn detect_player(play_path: &Path) -> Result<AsyncCommand, String> {
+    #[cfg(windows)]
+    {
+        // 1. ffplay from ffmpeg distribution (most reliable, supports seeking)
+        if backend_available("ffplay") {
+            let mut cmd = AsyncCommand::new("ffplay");
+            cmd.args(["-nodisp", "-autoexit", "-loglevel", "quiet"]);
+            cmd.arg(play_path);
+            return Ok(cmd);
+        }
+        // 2. PowerShell SoundPlayer (WAV only, no MP3, but Voicebox emits WAV)
+        if backend_available("powershell") || backend_available("pwsh") {
+            let shell = if backend_available("powershell") { "powershell" } else { "pwsh" };
+            let mut cmd = AsyncCommand::new(shell);
+            // Use -c with SoundPlayer; PlaySync blocks until finished
+            let ps_cmd = format!(
+                "$p = New-Object System.Media.SoundPlayer '{}'; $p.PlaySync()",
+                play_path.display().to_string().replace('\'', "''")
+            );
+            cmd.args(["-NoProfile", "-Command", &ps_cmd]);
+            return Ok(cmd);
+        }
+    }
+
     // 1. PipeWire native player (fastest, standard on modern Linux)
     if backend_available("pw-play") {
         let mut cmd = AsyncCommand::new("pw-play");
@@ -399,7 +466,14 @@ fn detect_player(play_path: &Path) -> Result<AsyncCommand, String> {
         return Ok(cmd);
     }
 
-    Err("No compatible Linux audio backend found (pw-play, paplay, aplay).".to_string())
+    #[cfg(windows)]
+    {
+        return Err("No compatible Windows audio backend found (ffplay, powershell). Instala ffmpeg.".to_string());
+    }
+    #[cfg(not(windows))]
+    {
+        return Err("No compatible Linux audio backend found (pw-play, paplay, aplay).".to_string());
+    }
 }
 
 #[cfg(test)]

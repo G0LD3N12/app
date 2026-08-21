@@ -70,7 +70,10 @@ const VerseItemInner: React.FC<VerseItemProps> = ({
       return (
         <span>
           {parts.map((part, idx) => {
-            const matched = relevantTesters.find((t) => t.tester.test(part));
+            const matched = relevantTesters.find((t) => {
+              t.tester.lastIndex = 0;
+              return t.tester.test(part);
+            });
             if (matched) {
               return (
                 <span

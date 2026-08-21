@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { Book, BibleVersion, SearchHit } from '../types';
 import { searchBible, STUDY_CONCEPT_CATALOG } from '../services/bibleService';
 import { THEME_PALETTES } from '../themeDefinitions';
@@ -47,17 +47,26 @@ function parseScriptureRef(
   const clean = raw.trim().toLowerCase();
   if (!clean) return null;
 
-  const match = clean.match(/^([a-záéíóúñ\s]+?)\s*(\d+)(?:[:\s\-](\d+))?$/i);
+  const match = clean.match(/^([0-9]?\s*[a-záéíóúñ\s]+?)\s*(\d+)(?:[:\s\-](\d+))?$/i);
   if (!match) return null;
 
-  const bookQuery = match[1].trim();
+  const bookQuery = match[1].trim().replace(/\s+/g, ' ');
   const chapter = parseInt(match[2], 10);
   const verse = match[3] ? parseInt(match[3], 10) : undefined;
 
+  const normalizedQuery = bookQuery.replace(/\s+/g, '');
   const found = books.find((b) => {
-    const bName = b.name_es.toLowerCase();
-    const bCode = b.code.toLowerCase();
-    return bName === bookQuery || bName.startsWith(bookQuery) || bCode === bookQuery;
+    const bName = b.name_es.toLowerCase().replace(/\s+/g, '');
+    const bCode = b.code.toLowerCase().replace(/\s+/g, '');
+    const bNameSpaced = b.name_es.toLowerCase();
+    return (
+      bName === bookQuery ||
+      bNameSpaced === bookQuery ||
+      bNameSpaced.startsWith(bookQuery) ||
+      bName.startsWith(normalizedQuery) ||
+      bCode === normalizedQuery ||
+      bCode === bookQuery
+    );
   });
 
   if (found && chapter >= 1 && chapter <= found.total_chapters) {
@@ -83,6 +92,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
   onOpenStudyCatalog,
 }) => {
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,13 +108,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
     }
   }, [isOpen, initialQuery]);
 
-  // Handle Search Query with Debounce
+  // Handle Search Query con debounce + deferred (input 60fps, búsqueda en background)
   useEffect(() => {
-    if (!isOpen || !query.trim()) {
+    if (!isOpen || !deferredQuery.trim()) {
       setSearchResults([]);
       return;
     }
 
+    const trimmed = deferredQuery.trim();
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const searchableVersions =
@@ -113,21 +125,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
             : versions.filter((v) => searchLanguages.includes(v.language)).map((v) => v.id);
         const versionIds =
           searchableVersions.length > 0 ? searchableVersions : [currentVersion];
-        const hits = await searchBible(query.trim(), versionIds, 20);
-        setSearchResults(hits);
+        const hits = await searchBible(trimmed, versionIds, 20);
+        if (!cancelled) setSearchResults(hits);
       } catch (err) {
-        console.error('Command search error:', err);
+        if (!cancelled) console.error('Command search error:', err);
       }
     }, 180);
 
-    return () => clearTimeout(timer);
-  }, [query, currentVersion, isOpen, versions, searchLanguages]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [deferredQuery, currentVersion, isOpen, versions, searchLanguages]);
 
   const items = useMemo(() => {
     const next: CommandItem[] = [];
+    const q = deferredQuery;
+    const qLower = q.toLowerCase();
 
     // 0. Recientes (when query is empty)
-    if (!query.trim()) {
+    if (!q.trim()) {
       try {
         const stored = localStorage.getItem('verbum_recent_passages');
         if (stored) {
@@ -154,7 +171,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
       }
     }
 
-    const parsedRef = parseScriptureRef(query, books);
+    const parsedRef = parseScriptureRef(q, books);
 
     if (parsedRef) {
       next.push({
@@ -191,9 +208,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
 
     STUDY_CONCEPT_CATALOG.filter(
       (c) =>
-        !query ||
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.desc.toLowerCase().includes(query.toLowerCase())
+        !q ||
+        c.name.toLowerCase().includes(qLower) ||
+        c.desc.toLowerCase().includes(qLower)
     ).forEach((c) => {
       next.push({
         id: `concept-${c.slug}`,
@@ -245,7 +262,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
     ];
 
     THEME_PALETTES.forEach((t) => {
-      if (!query || t.name.toLowerCase().includes(query.toLowerCase()) || 'tema'.includes(query.toLowerCase())) {
+      if (!q || t.name.toLowerCase().includes(qLower) || qLower.includes('tema')) {
         appCommands.push({
           id: `theme-${t.id}`,
           category: 'Comandos',
@@ -261,18 +278,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = React.memo(({
     });
 
     if (
-      !query ||
-      'comando'.includes(query.toLowerCase()) ||
-      'vista'.includes(query.toLowerCase()) ||
-      'tema'.includes(query.toLowerCase()) ||
-      'configuracion'.includes(query.toLowerCase())
+      !q ||
+      qLower.includes('comando') ||
+      qLower.includes('vista') ||
+      qLower.includes('tema') ||
+      qLower.includes('configuracion') ||
+      qLower.includes('configuración')
     ) {
       next.push(...appCommands);
     }
 
     return next;
   }, [
-    query,
+    deferredQuery,
     searchResults,
     books,
     onSelectPassage,

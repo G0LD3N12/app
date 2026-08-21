@@ -98,11 +98,9 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
     document.addEventListener('touchend', handleDelayedCheck);
     document.addEventListener('keyup', handleDelayedCheck);
 
-    // Hide toolbar when scrolling reader viewport
-    const handleScroll = () => {
-      if (position) handleDelayedCheck();
-    };
-    window.addEventListener('scroll', handleScroll, true);
+    // Hide toolbar when scrolling reader viewport — passive, no layout block
+    const handleScroll = () => handleDelayedCheck();
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true } as any);
 
     return () => {
       document.removeEventListener('selectionchange', handleDelayedCheck);
@@ -112,14 +110,14 @@ export const TextSelectionToolbar: React.FC<TextSelectionToolbarProps> = ({
       window.removeEventListener('scroll', handleScroll, true);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
-  }, [handleDelayedCheck, position]);
+  }, [handleDelayedCheck]);
 
   if (!position || !selectedText) return null;
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     const quote = `«${selectedText}» — ${bookName} ${chapter}:${sourceVerseNum}`;
-    navigator.clipboard.writeText(quote);
+    navigator.clipboard.writeText(quote).catch(() => showToast('No se pudo copiar'));
     showToast(`Copiado ${bookName} ${chapter}:${sourceVerseNum}`);
     window.getSelection()?.removeAllRanges();
     setPosition(null);

@@ -53,49 +53,31 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
     setComparisons([]);
 
     const loadTranslations = async () => {
-      const results: { config: TranslationColConfig; version: BibleVersion | null; text: string }[] = [];
-
-      for (const config of TARGET_TRANSLATIONS) {
-        // Find existing version or match by id/short_name
+      const tasks = TARGET_TRANSLATIONS.map(async (config) => {
         let vObj: BibleVersion | null = versions.find(
           (v) => v.id.toLowerCase() === config.id || v.short_name.toLowerCase() === config.shortName.toLowerCase()
         ) || null;
-
-        // Fallback for rvr1960 to sse if not present
         if (!vObj && config.id === 'rvr1960') {
           vObj = versions.find((v) => v.id === 'sse') || null;
         }
-
         const effectiveVersionId = vObj ? vObj.id : config.id;
-
         try {
           const verses = await fetchChapter(effectiveVersionId, book.id, chapter);
           const match = verses.find((item) => item.verse === verseNum);
-          if (match && isMounted) {
-            results.push({
-              config,
-              version: vObj,
-              text: match.text,
-            });
-          } else if (isMounted) {
-            // Fallback sample if text loading had error
-            results.push({
-              config,
-              version: vObj,
-              text: 'Texto no disponible en esta traducción para el versículo seleccionado.',
-            });
-          }
+          return {
+            config,
+            version: vObj,
+            text: match ? match.text : 'Texto no disponible en esta traducción para el versículo seleccionado.',
+          };
         } catch {
-          if (isMounted) {
-            results.push({
-              config,
-              version: vObj,
-              text: 'Texto no disponible en esta traducción para el versículo seleccionado.',
-            });
-          }
+          return {
+            config,
+            version: vObj,
+            text: 'Texto no disponible en esta traducción para el versículo seleccionado.',
+          };
         }
-      }
-
+      });
+      const results = await Promise.all(tasks);
       if (isMounted) {
         setComparisons(results);
         setIsLoading(false);
@@ -129,7 +111,7 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
 
     if (activeEntry) {
       const text = `«${activeEntry.text}»\n— ${book.name_es} ${chapter}:${verseNum} (${activeEntry.config.shortName})`;
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).catch(() => showToast('No se pudo copiar'));
       setCopiedAll(true);
       showToast(`Copiado [${activeEntry.config.shortName}] ${book.name_es} ${chapter}:${verseNum}`);
       setTimeout(() => setCopiedAll(false), 2000);
@@ -137,7 +119,7 @@ export const VerseCompareModal: React.FC<VerseCompareModalProps> = React.memo(({
       const allText = comparisons
         .map((c) => `[${c.config.shortName}] ${book.name_es} ${chapter}:${verseNum}\n«${c.text}»`)
         .join('\n\n');
-      navigator.clipboard.writeText(allText);
+      navigator.clipboard.writeText(allText).catch(() => showToast('No se pudo copiar'));
       setCopiedAll(true);
       showToast(`Comparación copiada (${comparisons.length} traducciones)`);
       setTimeout(() => setCopiedAll(false), 2000);

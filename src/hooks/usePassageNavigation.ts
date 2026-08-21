@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Book, VerseWithStudy } from '../types';
 import { fetchChapter } from '../services/bibleService';
 
@@ -36,20 +36,26 @@ export function usePassageNavigation(
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [targetVerseToScroll, setTargetVerseToScroll] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const selectedVerseRef = useRef<number | null>(1);
+  useEffect(() => { selectedVerseRef.current = selectedVerse; }, [selectedVerse]);
 
   // Resolve the initial passage from localStorage once the book
   // catalog has been loaded
   useEffect(() => {
     if (currentBook || books.length === 0) return;
-    const savedBookId = parseInt(localStorage.getItem('verbum_book_id') || '6', 10);
-    const savedChapter = parseInt(localStorage.getItem('verbum_chapter') || '15', 10);
+    const rawBookId = parseInt(localStorage.getItem('verbum_book_id') || '6', 10);
+    const rawChapter = parseInt(localStorage.getItem('verbum_chapter') || '15', 10);
     const savedVersion = localStorage.getItem('verbum_version') || 'rv1909';
-    setCurrentBook(books.find((b) => b.id === savedBookId) || books[0] || null);
-    setCurrentChapter(savedChapter);
+    const savedBookId = Number.isFinite(rawBookId) ? rawBookId : 6;
+    const savedChapter = Number.isFinite(rawChapter) && rawChapter > 0 ? rawChapter : 15;
+    const fallbackBook = books.find((b) => b.id === savedBookId) || books[0] || null;
+    const clampedChapter = fallbackBook ? Math.min(savedChapter, fallbackBook.total_chapters) : savedChapter;
+    setCurrentBook(fallbackBook);
+    setCurrentChapter(clampedChapter);
     setCurrentVersion(savedVersion);
   }, [books, currentBook]);
 
-  // Persist current passage and push to recent passages list
+  // Persist current passage and push to recent passages list (evita thrash por J/K: solo al cambiar capítulo/libro)
   useEffect(() => {
     if (!currentBook) return;
     localStorage.setItem('verbum_book_id', currentBook.id.toString());
@@ -66,14 +72,14 @@ export function usePassageNavigation(
         bookId: currentBook.id,
         bookName: currentBook.name_es,
         chapter: currentChapter,
-        verse: selectedVerse || 1,
+        verse: selectedVerseRef.current || 1,
         timestamp: Date.now(),
       });
       localStorage.setItem('verbum_recent_passages', JSON.stringify(recents.slice(0, 10)));
     } catch {
       // Ignore storage errors
     }
-  }, [currentBook, currentChapter, currentVersion, selectedVerse]);
+  }, [currentBook, currentChapter, currentVersion]);
 
   // Load Primary Chapter Verses
   useEffect(() => {
@@ -115,17 +121,26 @@ export function usePassageNavigation(
     };
   }, [currentBook, currentChapter, secondaryVersion, parallelMode]);
 
-  // Warm adjacent chapters so next/prev navigation is instant
+  // Warm adjacent chapters so next/prev navigation is instant — idle, no competir con paint
   useEffect(() => {
     if (!currentBook) return;
     const neighbors = [currentChapter - 1, currentChapter + 1].filter(
       (ch) => ch >= 1 && ch <= currentBook.total_chapters
     );
-    for (const ch of neighbors) {
-      void fetchChapter(currentVersion, currentBook.id, ch);
-      if (parallelMode) {
-        void fetchChapter(secondaryVersion, currentBook.id, ch);
+    if (neighbors.length === 0) return;
+    const ric: any = (window as any).requestIdleCallback;
+    const run = () => {
+      for (const ch of neighbors) {
+        void fetchChapter(currentVersion, currentBook.id, ch);
+        if (parallelMode) void fetchChapter(secondaryVersion, currentBook.id, ch);
       }
+    };
+    if (ric) {
+      const id = ric(run, { timeout: 1200 });
+      return () => (window as any).cancelIdleCallback?.(id);
+    } else {
+      const t = setTimeout(run, 400);
+      return () => clearTimeout(t);
     }
   }, [currentBook, currentChapter, currentVersion, parallelMode, secondaryVersion]);
 

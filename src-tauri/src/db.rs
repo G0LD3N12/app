@@ -4,6 +4,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BibleVersion {
@@ -90,28 +91,34 @@ pub struct StudyConceptDetail {
 pub struct DatabaseManager {
     pool: Pool<SqliteConnectionManager>,
     resource_dir: PathBuf,
+    alias_cache: Mutex<Option<HashMap<String, Vec<String>>>>,
 }
 
 impl DatabaseManager {
     pub fn new(resource_dir: PathBuf) -> Result<Self, String> {
         let db_path = resource_dir.join("bible.db");
         // Every pooled connection gets the same high-read-performance PRAGMAs
+        // Windows NTFS tuning: WAL journal size cap prevents unbounded growth on HDDs
         let manager = SqliteConnectionManager::file(&db_path).with_init(|conn: &mut Connection| {
             let _mode: std::result::Result<String, _> =
                 conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0));
             let _ = conn.execute("PRAGMA synchronous = NORMAL", []);
-            let _ = conn.execute("PRAGMA cache_size = -64000", []);
+            let _ = conn.execute("PRAGMA journal_size_limit = 67108864", []);
+            let _ = conn.execute("PRAGMA wal_autocheckpoint = 1000", []);
+            let _ = conn.execute("PRAGMA cache_size = -32000", []);
             let _ = conn.execute("PRAGMA temp_store = MEMORY", []);
-            let _ = conn.execute("PRAGMA mmap_size = 268435456", []);
+            let _ = conn.execute("PRAGMA mmap_size = 134217728", []);
+            let _ = conn.execute("PRAGMA query_only = 0", []);
             Ok(())
         });
 
         let pool = r2d2::Pool::builder()
-            .max_size(4)
+            .max_size(2)
+            .min_idle(Some(1))
             .build(manager)
             .map_err(|e| format!("Failed to create SQLite connection pool at {:?}: {}", db_path, e))?;
 
-        Ok(Self { pool, resource_dir })
+        Ok(Self { pool, resource_dir, alias_cache: Mutex::new(None) })
     }
 
     pub fn get_versions(&self) -> Result<Vec<BibleVersion>, String> {
@@ -244,35 +251,57 @@ impl DatabaseManager {
             return Ok(Vec::new());
         }
 
-        // 1. Resolve aliases
+        // 1. Resolve aliases — 1 query per search (vs N per token) + lazy in-memory cache
         let conn = self.pool.get().map_err(|e| e.to_string())?;
-        let mut terms = Vec::new();
         let tokens: Vec<&str> = clean_q.split_whitespace().collect();
+
+        // Lazy cache: load alias table once per process
+        let alias_lookup: HashMap<String, Vec<String>> = {
+            let mut guard = self.alias_cache.lock().unwrap();
+            if guard.is_none() {
+                let mut map: HashMap<String, Vec<String>> = HashMap::new();
+                if let Ok(mut stmt) = conn.prepare("SELECT canonical_term, alias_term FROM search_aliases") {
+                    if let Ok(rows) = stmt.query_map([], |row| {
+                        let canon: String = row.get(0)?;
+                        let alias: String = row.get(1)?;
+                        Ok((canon, alias))
+                    }) {
+                        // canonical -> aliases
+                        let mut canon_to_aliases: HashMap<String, Vec<String>> = HashMap::new();
+                        let mut alias_to_canon: HashMap<String, String> = HashMap::new();
+                        for pair in rows.flatten() {
+                            canon_to_aliases.entry(pair.0.clone()).or_default().push(pair.1.clone());
+                            alias_to_canon.insert(pair.1.clone(), pair.0.clone());
+                        }
+                        // build lookup for both canonical and alias keys
+                        for (canon, aliases) in &canon_to_aliases {
+                            let mut full = aliases.clone();
+                            full.push(canon.clone());
+                            full.sort_unstable();
+                            full.dedup();
+                            map.insert(canon.clone(), full.clone());
+                            for alias in aliases {
+                                map.insert(alias.clone(), full.clone());
+                            }
+                        }
+                    }
+                }
+                *guard = Some(map);
+            }
+            guard.as_ref().unwrap().clone()
+        };
+
+        let mut terms = Vec::new();
         for t in &tokens {
             let canon_clean = t.to_lowercase();
-            let mut alias_stmt = conn.prepare(
-                "SELECT alias_term FROM search_aliases WHERE canonical_term = ?1 OR alias_term = ?1"
-            ).map_err(|e| e.to_string())?;
-
-            let alias_rows = alias_stmt.query_map([&canon_clean], |row| {
-                let alias: String = row.get(0)?;
-                Ok(alias)
-            }).map_err(|e| e.to_string())?;
-
-            let mut alias_list = Vec::new();
-            for val in alias_rows.flatten() {
-                alias_list.push(format!("\"{}\"", val));
-            }
-
-            if alias_list.is_empty() {
-                // Escape quotes for FTS5
+            if let Some(expansions) = alias_lookup.get(&canon_clean) {
+                let alias_list: Vec<String> = expansions.iter().map(|v| format!("\"{}\"", v.replace('"', "\"\""))).collect();
+                terms.push(format!("({})", alias_list.join(" OR ")));
+            } else {
                 let escaped = t.replace('"', "\"\"");
                 terms.push(format!("\"{}\"", escaped));
-            } else {
-                terms.push(format!("({})", alias_list.join(" OR ")));
             }
         }
-
         let fts_match_query = terms.join(" AND ");
 
         // Build version filter IN (?, ?, ...)

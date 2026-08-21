@@ -71,17 +71,29 @@ export function useReaderPreferences() {
   const useSystemTheme = useCallback(() => {
     setThemePreference({ mode: 'system' });
   }, []);
+  const VALID_FONT_FAMILIES: ScriptureFont[] = ['literata','crimson','garamond','charter','source-serif','sf-pro','inter','jakarta','cambria','georgia','sans'];
+  const VALID_LINE_HEIGHT: LineHeightPreset[] = ['compact','comfortable','spacious'];
+  const VALID_MAX_WIDTH: MaxWidthPreset[] = ['standard','wide','expanded'];
+  const isValidFontFamily = (v: unknown): v is ScriptureFont => typeof v === 'string' && (VALID_FONT_FAMILIES as string[]).includes(v);
+  const isValidLineHeight = (v: unknown): v is LineHeightPreset => typeof v === 'string' && (VALID_LINE_HEIGHT as string[]).includes(v);
+  const isValidMaxWidth = (v: unknown): v is MaxWidthPreset => typeof v === 'string' && (VALID_MAX_WIDTH as string[]).includes(v);
+
   const [fontSize, setFontSize] = useState<number>(() => {
-    return parseInt(localStorage.getItem('verbum_font_size') || '19', 10);
+    const raw = parseInt(localStorage.getItem('verbum_font_size') || '19', 10);
+    if (!Number.isFinite(raw)) return 19;
+    return Math.min(28, Math.max(14, raw));
   });
   const [fontFamily, setFontFamily] = useState<ScriptureFont>(() => {
-    return (localStorage.getItem('verbum_font_family') as ScriptureFont) || 'literata';
+    const stored = localStorage.getItem('verbum_font_family');
+    return isValidFontFamily(stored) ? stored : 'literata';
   });
   const [lineHeightPreset, setLineHeightPreset] = useState<LineHeightPreset>(() => {
-    return (localStorage.getItem('verbum_line_height') as LineHeightPreset) || 'comfortable';
+    const stored = localStorage.getItem('verbum_line_height');
+    return isValidLineHeight(stored) ? stored : 'comfortable';
   });
   const [maxWidthPreset, setMaxWidthPreset] = useState<MaxWidthPreset>(() => {
-    return (localStorage.getItem('verbum_max_width') as MaxWidthPreset) || 'wide';
+    const stored = localStorage.getItem('verbum_max_width');
+    return isValidMaxWidth(stored) ? stored : 'wide';
   });
 
   useEffect(() => {

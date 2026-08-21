@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   BibleVersion,
   Book,
@@ -10,17 +10,19 @@ import { fetchVersions, fetchBooks, checkOllamaModelStatus } from './services/bi
 import { Header } from './components/Header';
 import { Sidebar, AppView } from './components/Sidebar';
 import { BibleReader } from './components/BibleReader';
-import { SettingsView } from './components/SettingsView';
-import { StudyCatalogView } from './components/StudyCatalogView';
-import { DeepStudyView } from './components/DeepStudyView';
-import { CommandPalette } from './components/CommandPalette';
-import { StudyDrawer } from './components/StudyDrawer';
 import { TextSelectionToolbar } from './components/TextSelectionToolbar';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
-import { BookPickerModal } from './components/BookPickerModal';
-import { VerseCompareModal } from './components/VerseCompareModal';
 import { ToastHost } from './components/ToastHost';
-import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+
+// Lazy — fuera del paint crítico, sin cambio visual (Suspense fallback null)
+const SettingsView = lazy(() => import('./components/SettingsView').then(m => ({ default: m.SettingsView })));
+const StudyCatalogView = lazy(() => import('./components/StudyCatalogView').then(m => ({ default: m.StudyCatalogView })));
+const DeepStudyView = lazy(() => import('./components/DeepStudyView').then(m => ({ default: m.DeepStudyView })));
+const CommandPalette = lazy(() => import('./components/CommandPalette').then(m => ({ default: m.CommandPalette })));
+const StudyDrawer = lazy(() => import('./components/StudyDrawer').then(m => ({ default: m.StudyDrawer })));
+const BookPickerModal = lazy(() => import('./components/BookPickerModal').then(m => ({ default: m.BookPickerModal })));
+const VerseCompareModal = lazy(() => import('./components/VerseCompareModal').then(m => ({ default: m.VerseCompareModal })));
+const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
 import { useAudioManager } from './context/AudioManagerContext';
 import { usePersistentBoolean } from './hooks/usePersistentBoolean';
 import { useReaderPreferences } from './hooks/useReaderPreferences';
@@ -151,6 +153,7 @@ export function App() {
 
   // Bookmarks scoped to the chapter currently open
   const { bookmarkedVerses, toggleBookmark } = useBookmarks(currentBook, currentChapter);
+  const maxVerseInChapter = useMemo(() => verses.length ? Math.max(...verses.map((v) => v.verse)) : 1, [verses]);
 
   useEffect(() => {
     localStorage.setItem('verbum_secondary_version', secondaryVersion);
@@ -168,6 +171,27 @@ export function App() {
       }
     };
     initApp();
+  }, []);
+
+  // Idle preload de modales pesados (sin bloquear paint, invisible)
+  useEffect(() => {
+    const ric: any = (window as any).requestIdleCallback;
+    const idleId = ric
+      ? ric(() => {
+          void import('./components/CommandPalette');
+          void import('./components/SettingsView');
+          void import('./components/StudyDrawer');
+          void import('./components/BookPickerModal');
+        })
+      : setTimeout(() => {
+          void import('./components/CommandPalette');
+          void import('./components/SettingsView');
+        }, 1800);
+    return () => {
+      const cic: any = (window as any).cancelIdleCallback;
+      if (cic && typeof idleId === 'number') cic(idleId);
+      else clearTimeout(idleId as any);
+    };
   }, []);
 
   const handleSelectPassage = useCallback(
@@ -307,7 +331,7 @@ export function App() {
           e.preventDefault();
           setSelectedVerse((prev) => {
             const current = prev || 1;
-            const next = Math.min(verses.length || 1, current + 1);
+            const next = Math.min(maxVerseInChapter, current + 1);
             setTargetVerseToScroll(next);
             return next;
           });
@@ -363,20 +387,24 @@ export function App() {
         return;
       }
 
-      // Escape key to close modals
+      // Escape key to close modals — stacked LIFO, solo el superior
       if (e.key === 'Escape') {
-        if (isShortcutsModalOpen) setIsShortcutsModalOpen(false);
-        if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
-        if (isBookPickerOpen) setIsBookPickerOpen(false);
-        if (isVersionLibraryOpen) setIsVersionLibraryOpen(false);
-        if (compareVerseNum !== null) setCompareVerseNum(null);
-        if (activeConceptSlug !== null) setActiveConceptSlug(null);
+        if (isShortcutsModalOpen) { setIsShortcutsModalOpen(false); return; }
+        if (isCommandPaletteOpen) { setIsCommandPaletteOpen(false); return; }
+        if (isBookPickerOpen) { setIsBookPickerOpen(false); return; }
+        if (isVersionLibraryOpen) { setIsVersionLibraryOpen(false); return; }
+        if (compareVerseNum !== null) { setCompareVerseNum(null); return; }
+        if (activeConceptSlug !== null || activeAIRequest !== null) {
+          setActiveConceptSlug(null);
+          setActiveAIRequest(null);
+          return;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeView, isSettingsOpen, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, verses, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, toggleBookmark, pause, resume, playChapter]);
+  }, [activeView, isSettingsOpen, isShortcutsModalOpen, isCommandPaletteOpen, isBookPickerOpen, isVersionLibraryOpen, compareVerseNum, activeConceptSlug, activeAIRequest, maxVerseInChapter, currentBook, currentChapter, currentVersion, playbackState, queue, navigateChapter, openCommandPalette, setHideTopBar, setIsSidebarExpanded, setParallelMode, setSelectedVerse, selectedVerse, toggleBookmark, pause, resume, playChapter]);
 
   const primaryVersionObj = versions.find((v) => v.id === currentVersion);
   const secondaryVersionObj = versions.find((v) => v.id === secondaryVersion);
@@ -494,30 +522,33 @@ export function App() {
             />
           )}
 
-          {activeView === 'study' && (
-            <StudyCatalogView
-              onSelectConcept={handleSelectConcept}
-              onNavigateToPassage={(bookId, chapter) => {
-                const b = books.find((x) => x.id === bookId);
-                if (b) handleSelectPassage(b, chapter, 1);
-              }}
-            />
-          )}
+          <Suspense fallback={null}>
+            {activeView === 'study' && (
+              <StudyCatalogView
+                onSelectConcept={handleSelectConcept}
+                onNavigateToPassage={(bookId, chapter) => {
+                  const b = books.find((x) => x.id === bookId);
+                  if (b) handleSelectPassage(b, chapter, 1);
+                }}
+              />
+            )}
 
-          {activeView === 'deep-study' && deepStudyResult && (
-            <DeepStudyView
-              initialResult={deepStudyResult}
-              aiRequest={activeAIRequest}
-              aiConfig={aiConfig}
-              onBackToReader={() => setActiveView('reader')}
-              onNavigateToPassage={handleNavigateToPassage}
-            />
-          )}
+            {activeView === 'deep-study' && deepStudyResult && (
+              <DeepStudyView
+                initialResult={deepStudyResult}
+                aiRequest={activeAIRequest}
+                aiConfig={aiConfig}
+                onBackToReader={() => setActiveView('reader')}
+                onNavigateToPassage={handleNavigateToPassage}
+              />
+            )}
+          </Suspense>
 
         </main>
       </div>
 
-      <SettingsView
+      <Suspense fallback={null}>
+        <SettingsView
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         theme={theme}
@@ -612,11 +643,12 @@ export function App() {
       {/* Global audio player: mounted at the root so `position: fixed` keeps
           it pinned to the bottom of the window in every view and scroll state */}
       <AudioPlayerBar />
-      {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
-      <KeyboardShortcutsModal
-        isOpen={isShortcutsModalOpen}
-        onClose={() => setIsShortcutsModalOpen(false)}
-      />
+        {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
+        <KeyboardShortcutsModal
+          isOpen={isShortcutsModalOpen}
+          onClose={() => setIsShortcutsModalOpen(false)}
+        />
+      </Suspense>
 
       <ToastHost />
     </div>

@@ -77,7 +77,7 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
       });
       md += `\n`;
     }
-    navigator.clipboard.writeText(md);
+    navigator.clipboard.writeText(md).catch(() => showToast('No se pudo copiar al portapapeles'));
     setCopied(true);
     showToast('Estudio copiado al portapapeles');
     setTimeout(() => setCopied(false), 2000);
@@ -245,7 +245,7 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
                       {img.data_content ? (
                         <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: img.data_content }} />
                       ) : (
-                        <img src={img.file_path} alt={img.title} />
+                        <img src={img.file_path} alt={img.title} loading="lazy" decoding="async" />
                       )}
                     </div>
                     <div className="image-card-meta">
@@ -281,7 +281,7 @@ export const DeepStudyView: React.FC<DeepStudyViewProps> = React.memo(({
                   dangerouslySetInnerHTML={{ __html: result.images[selectedImage].data_content || '' }}
                 />
               ) : (
-                <img src={result.images[selectedImage].file_path} alt="" style={{ maxWidth: '100%', maxHeight: '500px' }} />
+                <img src={result.images[selectedImage].file_path} alt="" style={{ maxWidth: '100%', maxHeight: '500px' }} loading="lazy" decoding="async" />
               )}
             </div>
           </div>

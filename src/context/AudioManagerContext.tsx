@@ -579,7 +579,7 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const pause = useCallback(async () => {
     playbackStateRef.current = 'paused';
-    if (activeEngineType === 'voicebox') {
+    if (activeEngineTypeRef.current === 'voicebox') {
       try {
         await invoke('pause_native_audio');
       } catch {
@@ -590,11 +590,11 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
       systemSpeechEngineRef.current.pause();
     }
     setPlaybackState('paused');
-  }, [activeEngineType]);
+  }, []);
 
   const resume = useCallback(async () => {
     playbackStateRef.current = 'playing';
-    if (activeEngineType === 'voicebox') {
+    if (activeEngineTypeRef.current === 'voicebox') {
       try {
         await invoke('resume_native_audio');
       } catch {
@@ -605,7 +605,7 @@ export const AudioManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
       systemSpeechEngineRef.current.resume();
     }
     setPlaybackState('playing');
-  }, [activeEngineType]);
+  }, []);
 
   // Silences the current verse right away when skipping, without tearing down
   // the queue; playItemAtIndex takes over the timeline via its own token.

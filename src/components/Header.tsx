@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Book, BibleVersion, ScriptureFont, LineHeightPreset, MaxWidthPreset, AppTheme } from '../types';
 import { VersionPickerPopover } from './VersionPickerPopover';
 import { ReaderPreferencesPopover } from './ReaderPreferencesPopover';
@@ -69,26 +69,83 @@ export const Header: React.FC<HeaderProps> = React.memo(({
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const isWindows = isWindowsPlatform();
   const captionState = useWindowsCaptionState();
+  const versionControlRef = useRef<HTMLDivElement>(null);
+  const readingControlRef = useRef<HTMLDivElement>(null);
+  const overflowControlRef = useRef<HTMLDivElement>(null);
 
   const isPopoverOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
   const popoverTarget = controlledTarget !== undefined ? controlledTarget : internalTarget;
 
-  const handleOpenPopover = (target: 'primary' | 'secondary' = 'primary') => {
+  const handleClosePopover = useCallback(() => {
+    if (controlledOnClose) {
+      controlledOnClose();
+    } else {
+      setInternalIsOpen(false);
+    }
+  }, [controlledOnClose]);
+
+  const handleOpenPopover = useCallback((target: 'primary' | 'secondary' = 'primary') => {
+    // Toggle fluido: mismo botón cierra, distinto cambia columna
+    if (isPopoverOpen && popoverTarget === target) {
+      handleClosePopover();
+      return;
+    }
     if (controlledOnOpen) {
       controlledOnOpen(target);
     } else {
       setInternalTarget(target);
       setInternalIsOpen(true);
     }
-  };
+  }, [controlledOnOpen, isPopoverOpen, popoverTarget, handleClosePopover]);
 
-  const handleClosePopover = () => {
-    if (controlledOnClose) {
-      controlledOnClose();
-    } else {
-      setInternalIsOpen(false);
-    }
-  };
+  // Cerrar al hacer click fuera — igual que CommandPalette (backdrop), pero sin depender de backdrop fixed atrapado por header backdrop-filter
+  useEffect(() => {
+    if (!isPopoverOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (versionControlRef.current && !versionControlRef.current.contains(target)) {
+        handleClosePopover();
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown as any, { passive: true } as any);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown as any);
+    };
+  }, [isPopoverOpen, handleClosePopover, controlledOnClose]);
+
+  useEffect(() => {
+    if (!isPrefPopoverOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (readingControlRef.current && !readingControlRef.current.contains(target)) {
+        setIsPrefPopoverOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown as any, { passive: true } as any);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown as any);
+    };
+  }, [isPrefPopoverOpen]);
+
+  useEffect(() => {
+    if (!isOverflowOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (overflowControlRef.current && !overflowControlRef.current.contains(target)) {
+        setIsOverflowOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown as any, { passive: true } as any);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown as any);
+    };
+  }, [isOverflowOpen]);
 
   const currentVerObj = versions.find((v) => v.id === currentVersion);
   const secondaryVerObj = versions.find((v) => v.id === secondaryVersion);
@@ -142,7 +199,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
       {/* Right Segment: Translation Selector, Parallel, Prefs, Window Controls */}
       <div className="header-right" data-tauri-drag-region>
         {/* Rich Version Selector Dropdown */}
-        <div className="header-version-control" style={{ position: 'relative' }}>
+        <div ref={versionControlRef} className="header-version-control" style={{ position: 'relative' }}>
           {!parallelMode ? (
             <button
               className="version-dropdown-btn"
@@ -215,7 +272,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         </button>
 
         {/* Typography & Reading Preferences Popover Trigger */}
-        <div className="header-reading-control" style={{ position: 'relative' }}>
+        <div ref={readingControlRef} className="header-reading-control" style={{ position: 'relative' }}>
           <button
             className="icon-btn"
             onClick={() => setIsPrefPopoverOpen((prev) => !prev)}
@@ -240,7 +297,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
           />
         </div>
 
-        <div className="header-overflow-control">
+        <div ref={overflowControlRef} className="header-overflow-control">
           <button
             className={`icon-btn ${isOverflowOpen ? 'active-icon-btn' : ''}`}
             onClick={() => setIsOverflowOpen((current) => !current)}
@@ -251,8 +308,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({
             <MoreHorizontal size={16} />
           </button>
           {isOverflowOpen && (
-            <>
-              <div className="popover-backdrop" onClick={() => setIsOverflowOpen(false)} />
               <div className="header-overflow-menu">
                 <button
                   type="button"
@@ -287,7 +342,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({
                   <span>Lectura y tipografía</span>
                 </button>
               </div>
-            </>
           )}
         </div>
 

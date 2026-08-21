@@ -35,3 +35,7 @@ venv/
 
 # OS
 Thumbs.db
+
+# Previews & prototypes
+*-preview*.html
+curvas-sofisticadas*.html

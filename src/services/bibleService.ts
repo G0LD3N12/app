@@ -33,7 +33,7 @@ const chapterCache = new Map<string, VerseWithStudy[]>();
 const chapterInflight = new Map<string, Promise<VerseWithStudy[]>>();
 
 function chapterCacheKey(versionId: string, bookId: number, chapter: number): string {
-  return `${versionId}:${bookId}:${chapter}`;
+  return `${versionId.toLowerCase()}:${bookId}:${chapter}`;
 }
 
 // Insert into a Map as an LRU entry (refresh position, evict oldest past limit)

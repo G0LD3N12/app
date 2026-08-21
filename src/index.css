@@ -424,6 +424,10 @@ input {
   background-size: 180px 180px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .app-atmosphere::after { display: none; }
+}
+
 .app-header,
 .app-body-layout {
   position: relative;
@@ -841,7 +845,6 @@ input {
   box-shadow: inset 0 1px 0 var(--glass-bar-highlight);
   display: flex;
   flex-direction: column;
-  will-change: width, transform;
   transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1481,6 +1484,21 @@ input {
   padding: 24px 28px 80px 28px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  contain: layout style;
+}
+
+/* Keep the reading canvas visually quiet while preserving wheel, trackpad,
+   touch and keyboard scrolling. */
+.reader-viewport {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.reader-viewport::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .reader-content-wrapper {
@@ -1563,6 +1581,9 @@ input {
   border-radius: 0;
   border-left: 2px solid transparent;
   transition: background-color 0.16s ease, border-left-color 0.16s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 68px;
+  contain: layout style paint;
 }
 
 .verse-row-editorial:hover {
@@ -1746,6 +1767,9 @@ input {
   border-left: 2px solid transparent;
   padding: 6px 14px;
   transition: background-color 0.16s ease, border-left-color 0.16s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 78px;
+  contain: layout style paint;
 }
 
 .parallel-verse-row:hover {
@@ -7313,6 +7337,26 @@ select:focus-visible {
   --font-ui-display: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'Cascadia Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
   --font-reference: var(--font-mono);
+  --sidebar-silhouette-line: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --sidebar-silhouette-inset: color-mix(in srgb, white 7%, transparent);
+  --sidebar-silhouette-shadow: color-mix(in srgb, black 34%, transparent);
+  --sidebar-silhouette-fill: var(--glass-bar-bg);
+  --sidebar-silhouette-channel: 10px;
+  --sidebar-silhouette-lip: 5px;
+  --sidebar-silhouette-corner-x: 12px;
+  --sidebar-silhouette-corner-y: 18px;
+  --sidebar-silhouette-lip-radius-x: 6px;
+  --sidebar-silhouette-lip-radius-y: 12px;
+  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --windows-canvas-bevel-light: color-mix(in srgb, white 10%, transparent);
+  --windows-canvas-bevel-dark: color-mix(in srgb, black 48%, transparent);
+  --windows-canvas-shadow-ambient: color-mix(in srgb, black 62%, transparent);
+  --windows-canvas-shadow-contact: color-mix(in srgb, black 40%, transparent);
+  --windows-canvas-edge-glint: color-mix(in srgb, white 8%, transparent);
+  --windows-canvas-surface: color-mix(in srgb, var(--bg-app) 96%, var(--text-primary) 4%);
+  --windows-canvas-surface-sheen: color-mix(in srgb, var(--windows-canvas-surface) 98%, white 2%);
+  --windows-canvas-surface-depth: color-mix(in srgb, var(--windows-canvas-surface) 98%, black 2%);
+  --windows-canvas-radius: 16px;
 }
 
 [data-platform="windows"] .settings-panel-header h1,
@@ -7339,10 +7383,6 @@ select:focus-visible {
   --windows-chrome-control-pressed: color-mix(in srgb, var(--text-primary) 11%, transparent);
   --windows-chrome-control-border: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --windows-chrome-control-highlight: color-mix(in srgb, white 6%, transparent);
-  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 14%, transparent);
-  --windows-canvas-inset: color-mix(in srgb, white 12%, transparent);
-  --windows-canvas-relief: color-mix(in srgb, black 55%, transparent);
-  --windows-canvas-relief-contact: color-mix(in srgb, black 40%, transparent);
 }
 
 .windows-native-effects .app-atmosphere {
@@ -7438,64 +7478,81 @@ select:focus-visible {
   content: none;
 }
 
-.windows-native-effects .app-main-viewport {
-  /* D · Relieve del recorte (sidebar-relief-preview_2.html).
-     overflow:visible so the rounded box-shadow can land on the acrylic;
-     negative spread was clipping the lift down to nothing on Mica. */
+[data-platform="windows"] .app-main-viewport {
+  /* A restrained macOS-like rim: a crisp perimeter, a fine inner highlight
+     and a short ambient shadow keep the canvas architectural, not card-like. */
   overflow: visible;
-  background-color: color-mix(in srgb, var(--bg-app) 98%, transparent);
+  background:
+    linear-gradient(
+      145deg,
+      var(--windows-canvas-surface-sheen) 0%,
+      var(--windows-canvas-surface) 24%,
+      var(--windows-canvas-surface-depth) 100%
+    );
   margin-left: -1px;
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
+  border-radius: var(--windows-canvas-radius);
+  corner-shape: squircle;
   z-index: 26;
   box-shadow:
-    inset 1px 0 0 var(--windows-canvas-inset),
-    -1px 0 0 var(--windows-canvas-seam),
-    -2px 0 6px var(--windows-canvas-relief-contact),
-    -8px 4px 20px var(--windows-canvas-relief);
+    0 0 0 1px var(--windows-canvas-seam),
+    0 -1px 0 var(--windows-canvas-edge-glint),
+    -1px 0 0 color-mix(in srgb, var(--windows-canvas-edge-glint) 64%, transparent),
+    0 2px 8px var(--windows-canvas-shadow-contact),
+    0 16px 44px var(--windows-canvas-shadow-ambient);
   transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              border-top-left-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              border-bottom-left-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+              border-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.windows-native-effects .app-main-viewport::after {
-  content: none;
+[data-platform="windows"] .app-main-viewport::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: calc(var(--windows-canvas-radius) - 1px);
+  corner-shape: squircle;
+  box-shadow:
+    inset 0 1px 0 var(--windows-canvas-bevel-light),
+    inset 1px 0 0 color-mix(in srgb, var(--windows-canvas-bevel-light) 62%, transparent),
+    inset 0 -1px 0 var(--windows-canvas-bevel-dark),
+    inset -1px 0 0 color-mix(in srgb, var(--windows-canvas-bevel-dark) 54%, transparent);
 }
 
-.windows-native-effects .app-main-viewport::before {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-  box-shadow: inset 1px 0 0 var(--windows-canvas-inset);
+[data-platform="windows"] .app-main-viewport::before {
+  border-radius: inherit;
+  corner-shape: inherit;
+  box-shadow: none;
 }
 
-.windows-native-effects .reader-viewport,
-.windows-native-effects .study-catalog-view,
-.windows-native-effects .deep-study-view {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
+[data-platform="windows"] .reader-viewport,
+[data-platform="windows"] .study-catalog-view,
+[data-platform="windows"] .deep-study-view {
+  border-radius: inherit;
+  corner-shape: inherit;
 }
 
-.windows-native-effects .app-body-layout.zen-mode .app-main-viewport {
+[data-platform="windows"] .app-body-layout.zen-mode .app-main-viewport {
   overflow: hidden;
   margin-left: 0;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  border-radius: 0;
   z-index: auto;
   box-shadow: none;
 }
 
-.windows-native-effects .app-body-layout.zen-mode .app-main-viewport::before {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+[data-platform="windows"] .app-body-layout.zen-mode .app-main-viewport::before {
+  border-radius: 0;
   box-shadow: none;
 }
 
-.windows-native-effects .app-body-layout.zen-mode .reader-viewport,
-.windows-native-effects .app-body-layout.zen-mode .study-catalog-view,
-.windows-native-effects .app-body-layout.zen-mode .deep-study-view {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+[data-platform="windows"] .app-body-layout.zen-mode .app-main-viewport::after {
+  content: none;
+}
+
+[data-platform="windows"] .app-body-layout.zen-mode .reader-viewport,
+[data-platform="windows"] .app-body-layout.zen-mode .study-catalog-view,
+[data-platform="windows"] .app-body-layout.zen-mode .deep-study-view {
+  border-radius: 0;
 }
 
 .windows-native-effects[data-theme="white"] .app-header,
@@ -7529,13 +7586,120 @@ select:focus-visible {
   );
 }
 
-.windows-native-effects[data-theme="white"],
-.windows-native-effects[data-theme="light"],
-.windows-native-effects[data-theme="sepia"] {
-  --windows-canvas-seam: color-mix(in srgb, var(--text-primary) 14%, transparent);
-  --windows-canvas-inset: color-mix(in srgb, white 70%, transparent);
-  --windows-canvas-relief: color-mix(in srgb, black 18%, transparent);
-  --windows-canvas-relief-contact: color-mix(in srgb, black 10%, transparent);
+[data-platform="windows"][data-theme="white"],
+[data-platform="windows"][data-theme="light"],
+[data-platform="windows"][data-theme="sepia"] {
+  --windows-canvas-seam: color-mix(in srgb, black 12%, transparent);
+  --windows-canvas-bevel-light: color-mix(in srgb, white 95%, transparent);
+  --windows-canvas-bevel-dark: color-mix(in srgb, black 6%, transparent);
+  --windows-canvas-shadow-ambient: color-mix(in srgb, black 7%, transparent);
+  --windows-canvas-shadow-contact: color-mix(in srgb, black 4%, transparent);
+  --windows-canvas-edge-glint: color-mix(in srgb, white 92%, transparent);
+  --windows-canvas-surface: var(--bg-app);
+  --windows-canvas-surface-sheen: color-mix(in srgb, var(--bg-app) 99%, white 1%);
+  --windows-canvas-surface-depth: color-mix(in srgb, var(--bg-app) 98%, black 2%);
+}
+
+/* Equal 10px breathing room around the navigation plane. With a 5px lip on
+   each horizontal edge, precisely 5px of neutral air remains visible there. */
+[data-platform="windows"] .app-header {
+  /* Keep the header's 48px geometry while reserving its divider treatment
+     for a later pass. A transparent border avoids a one-pixel layout shift. */
+  border-bottom-color: transparent;
+}
+
+[data-platform="windows"] .app-body-layout {
+  column-gap: var(--sidebar-silhouette-channel);
+  padding-left: var(--sidebar-silhouette-channel);
+  transition: column-gap 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-platform="windows"] .app-body-layout.zen-mode {
+  column-gap: 0;
+  padding-left: 0;
+}
+
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-main-viewport {
+  height: auto;
+  margin-block: var(--sidebar-silhouette-channel);
+  margin-left: 0;
+  margin-right: var(--sidebar-silhouette-channel);
+}
+
+/* Sidebar silhouette · the navigation plane owns the transition. An
+   elliptical corner flows into a 5px binding lip, producing a restrained
+   S-curve without changing the rail's color or control treatment. */
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-sidebar {
+  overflow: visible;
+  z-index: 27;
+  margin-block: var(--sidebar-silhouette-channel);
+  border-radius: var(--sidebar-silhouette-corner-x) /
+                 var(--sidebar-silhouette-corner-y);
+  box-shadow:
+    inset 1px 0 0 var(--sidebar-silhouette-line),
+    inset -1px 0 0 var(--sidebar-silhouette-line),
+    -4px 0 12px -8px var(--sidebar-silhouette-shadow),
+    4px 0 12px -8px var(--sidebar-silhouette-shadow);
+}
+
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-sidebar::before,
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  width: calc(var(--sidebar-silhouette-lip) + 1px);
+  z-index: 2;
+  pointer-events: none;
+  background: var(--sidebar-silhouette-fill);
+}
+
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-sidebar::before {
+  left: calc(0px - var(--sidebar-silhouette-lip));
+  border-left: 1px solid var(--sidebar-silhouette-line);
+  border-radius: var(--sidebar-silhouette-lip-radius-x) 0 0
+                 var(--sidebar-silhouette-lip-radius-x) /
+                 var(--sidebar-silhouette-lip-radius-y) 0 0
+                 var(--sidebar-silhouette-lip-radius-y);
+  box-shadow:
+    inset 1px 0 0 var(--sidebar-silhouette-inset),
+    -3px 0 10px -7px var(--sidebar-silhouette-shadow);
+}
+
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .app-sidebar::after {
+  right: calc(0px - var(--sidebar-silhouette-lip));
+  border-right: 1px solid var(--sidebar-silhouette-line);
+  border-radius: 0 var(--sidebar-silhouette-lip-radius-x)
+                 var(--sidebar-silhouette-lip-radius-x) 0 /
+                 0 var(--sidebar-silhouette-lip-radius-y)
+                 var(--sidebar-silhouette-lip-radius-y) 0;
+  box-shadow:
+    inset -1px 0 0 var(--sidebar-silhouette-inset),
+    3px 0 10px -7px var(--sidebar-silhouette-shadow);
+}
+
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .sidebar-top,
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .sidebar-nav,
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .sidebar-footer,
+[data-platform="windows"] .app-body-layout:not(.zen-mode) .sidebar-zen-section {
+  overflow: hidden;
+}
+
+.windows-native-effects {
+  --sidebar-silhouette-fill: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-app) 14%, transparent) 0%,
+    color-mix(in srgb, var(--bg-app) 28%, transparent) 100%
+  );
+}
+
+[data-platform="windows"][data-theme="white"],
+[data-platform="windows"][data-theme="light"],
+[data-platform="windows"][data-theme="sepia"] {
+  --sidebar-silhouette-line: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  --sidebar-silhouette-inset: color-mix(in srgb, white 58%, transparent);
+  --sidebar-silhouette-shadow: color-mix(in srgb, black 13%, transparent);
 }
 
 .reader-pref-popover,

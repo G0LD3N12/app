@@ -150,13 +150,11 @@ export const VersionPickerPopover: React.FC<VersionPickerPopoverProps> = ({
   };
 
   return (
-    <>
-      <div className="library-popover-backdrop" onClick={onClose} />
-      <div
-        ref={popoverRef}
-        className="library-popover-card"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      ref={popoverRef}
+      className="library-popover-card"
+      onClick={(e) => e.stopPropagation()}
+    >
         {/* Header */}
         <div className="library-popover-header">
           <div className="library-popover-title-wrapper">
@@ -312,7 +310,6 @@ export const VersionPickerPopover: React.FC<VersionPickerPopoverProps> = ({
           </div>
         </div>
       </div>
-    </>
   );
 };
 export default VersionPickerPopover;

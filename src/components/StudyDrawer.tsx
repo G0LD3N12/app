@@ -79,7 +79,8 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
       })
       .catch((err) => {
         console.error('Failed to execute AI analysis:', err);
-        setError(String(err));
+        const msg = (err as any)?.message ?? (typeof err === 'string' ? err : JSON.stringify(err));
+        setError(String(msg).slice(0, 600));
       })
       .finally(() => setLoading(false));
   }, [aiRequest, aiConfig]);
@@ -97,7 +98,8 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
         })
         .catch((err) => {
           console.error('Failed to load concept detail:', err);
-          setError(String(err));
+          const msg = (err as any)?.message ?? (typeof err === 'string' ? err : JSON.stringify(err));
+          setError(String(msg).slice(0, 600));
         })
         .finally(() => setLoading(false));
     }
@@ -341,7 +343,7 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
                           {img.data_content ? (
                             <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: img.data_content }} />
                           ) : (
-                            <img src={img.file_path} alt={img.title} />
+                            <img src={img.file_path} alt={img.title} loading="lazy" decoding="async" />
                           )}
                         </div>
                         <div className="image-card-meta">
@@ -415,7 +417,7 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
                           {img.data_content ? (
                             <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: img.data_content }} />
                           ) : (
-                            <img src={img.file_path} alt={img.title} />
+                            <img src={img.file_path} alt={img.title} loading="lazy" decoding="async" />
                           )}
                         </div>
                         <div className="image-card-meta">
@@ -452,7 +454,7 @@ export const StudyDrawer: React.FC<StudyDrawerProps> = React.memo(({
                   {activeImg.data_content ? (
                     <div className="modal-svg-wrapper" dangerouslySetInnerHTML={{ __html: activeImg.data_content }} />
                   ) : (
-                    <img src={activeImg.file_path} alt={activeImg.title} className="modal-img-full" />
+                    <img src={activeImg.file_path} alt={activeImg.title} className="modal-img-full" loading="lazy" decoding="async" />
                   )}
                   <div className="modal-caption-box">
                     <div className="modal-caption-title">{activeImg.title}</div>

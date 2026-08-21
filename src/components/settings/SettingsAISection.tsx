@@ -37,7 +37,7 @@ const PROVIDERS: Array<{
 ];
 
 const providerDefaults: Record<ProviderType, string> = {
-  gemini: 'gemini-3.7-flash',
+  gemini: 'gemini-1.5-flash',
   ollama: 'qwen2.5:3b',
   openai_compatible: 'qwen/qwen-2.5-7b-instruct',
   heuristic_offline: '',

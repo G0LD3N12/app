@@ -62,6 +62,18 @@ pub fn run() {
     std::env::set_var("WEBKIT_FORCE_COMPOSITING_MODE", "1");
     std::env::set_var("LIBGL_ALWAYS_SOFTWARE", "0");
 
+    // Windows WebView2 GPU acceleration (Edge Chromium) — enable HW raster + DComp
+    #[cfg(windows)]
+    {
+        // Only set if not already provided by host environment
+        if std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_err() {
+            std::env::set_var(
+                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                "--enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist --enable-features=VaapiVideoDecoder --disable-features=UseChromeOSDirectVideoDecoder",
+            );
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

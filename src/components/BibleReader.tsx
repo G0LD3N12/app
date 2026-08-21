@@ -101,18 +101,20 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
   // Pre-compile concept regex testers once per chapter (shared across all verses)
   const chapterTesters = useMemo<ConceptTester[]>(() => {
     const seen = new Set<number>();
-    return verses.flatMap((v) => v.concepts).filter((c) => {
-      if (!c.word_pattern || seen.has(c.concept_id)) return false;
-      seen.add(c.concept_id);
-      try {
-        return true;
-      } catch {
-        return false;
+    const testers: ConceptTester[] = [];
+    for (const v of verses) {
+      for (const c of v.concepts) {
+        if (!c.word_pattern || seen.has(c.concept_id)) continue;
+        seen.add(c.concept_id);
+        try {
+          const tester = new RegExp(`^(${c.word_pattern})$`, 'i');
+          testers.push({ concept: c, tester });
+        } catch {
+          console.warn(`Invalid word_pattern for concept ${c.slug}:`, c.word_pattern);
+        }
       }
-    }).map((c) => ({
-      concept: c,
-      tester: new RegExp(`^(${c.word_pattern})$`, 'i'),
-    }));
+    }
+    return testers;
   }, [verses]);
 
   // Scroll to target verse when updated
@@ -126,7 +128,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
       });
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [targetVerseToScroll, verses]);
+  }, [targetVerseToScroll]);
 
   // Line height numeric multiplier
   const getLineHeightMultiplier = (): number => {
@@ -179,7 +181,7 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                 {currentBook.testament === 'OT' ? 'Antiguo Testamento' : 'Nuevo Testamento'}
               </span>
               <span className="meta-separator">·</span>
-              <span>{verses.length} versículos</span>
+              <span>{verses.length === 1 ? '1 versículo' : `${verses.length} versículos`}</span>
               <span className="meta-separator">·</span>
               <button
                 className="meta-version-badge-btn"
@@ -271,8 +273,10 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
             </div>
 
             <div className="parallel-rows-wrapper">
-              {verses.map((v, idx) => {
-                const pVerse = parallelVerses && parallelVerses[idx];
+              {(() => {
+                const parallelByVerse = new Map((parallelVerses || []).map((pv) => [pv.verse, pv]));
+                return verses.map((v) => {
+                const pVerse = parallelByVerse.get(v.verse);
 
                 return (
                   <div
@@ -317,7 +321,8 @@ export const BibleReader: React.FC<BibleReaderProps> = React.memo(({
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </div>
         )}
